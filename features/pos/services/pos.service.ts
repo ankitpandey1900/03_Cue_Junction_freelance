@@ -1,4 +1,4 @@
-import { CustomerOrder } from "@prisma/client"
+import { CustomerOrder, Prisma } from "@prisma/client"
 import { PlaceOrderValues } from "../schemas/pos.schema"
 import prisma from "@/lib/prisma"
 
@@ -13,7 +13,16 @@ export async function getMenu() {
 export async function placeOrder(data: PlaceOrderValues & { createdBy?: string }): Promise<CustomerOrder> {
   return await prisma.$transaction(async (tx) => {
     let orderSubtotal = 0
-    const orderItemsToCreate = []
+    const orderItemsToCreate: Prisma.CustomerOrderItemCreateWithoutOrderInput[] = []
+    let customerId = data.customerId || null
+
+    if (!customerId && data.sessionId) {
+      const session = await tx.session.findUnique({
+        where: { id: data.sessionId },
+        select: { customerId: true },
+      })
+      customerId = session?.customerId || null
+    }
 
     for (const item of data.items) {
       const menuItem = await tx.menuItem.findUnique({
@@ -24,8 +33,8 @@ export async function placeOrder(data: PlaceOrderValues & { createdBy?: string }
       if (!menuItem.isAvailable) throw new Error(`Item ${menuItem.name} is currently not available`)
 
       // Check inventory stock limits
-      if ((menuItem as any).stock < item.quantity) {
-        throw new Error(`Insufficient stock for "${menuItem.name}". Only ${(menuItem as any).stock} left in inventory.`)
+      if (menuItem.stock < item.quantity) {
+        throw new Error(`Insufficient stock for "${menuItem.name}". Only ${menuItem.stock} left in inventory.`)
       }
 
       // Decrement inventory stock quantity
@@ -35,14 +44,16 @@ export async function placeOrder(data: PlaceOrderValues & { createdBy?: string }
           stock: {
             decrement: item.quantity
           }
-        } as any
+        }
       })
 
       const subTotal = menuItem.basePrice * item.quantity
       orderSubtotal += subTotal
 
       orderItemsToCreate.push({
-        menuItemId: item.menuItemId,
+        menuItem: {
+          connect: { id: item.menuItemId },
+        },
         itemNameSnapshot: menuItem.name,
         categorySnapshot: menuItem.category.name,
         unitPriceSnapshot: menuItem.basePrice,
@@ -59,7 +70,7 @@ export async function placeOrder(data: PlaceOrderValues & { createdBy?: string }
     return await tx.customerOrder.create({
       data: {
         sessionId: data.sessionId || null,
-        customerId: data.customerId || null,
+        customerId,
         status: data.sessionId ? "PENDING" : "SERVED", // Standalone orders are served/completed immediately
         subtotal: orderSubtotal,
         discount,
@@ -84,4 +95,3 @@ export async function updateOrderStatus(orderId: string, status: string): Promis
     data: { status }
   })
 }
-

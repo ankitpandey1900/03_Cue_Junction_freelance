@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useForm } from "react-hook-form"
+import { Resolver, useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { MenuCategory, MenuItem } from "@prisma/client"
 import { menuItemSchema, MenuItemFormValues } from "../schemas/item.schema"
@@ -27,7 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Trash2, Plus, Edit2, Search, X, Check, Flame, ArrowUpDown } from "lucide-react"
+import { Trash2, Plus, Edit2, Search, X, Check, Flame } from "lucide-react"
 
 interface MenuItemManagerProps {
   menuItems: (MenuItem & { category: { name: string } })[]
@@ -44,7 +44,7 @@ export function MenuItemManager({ menuItems, categories }: MenuItemManagerProps)
 
   // Create form
   const createForm = useForm<MenuItemFormValues>({
-    resolver: zodResolver(menuItemSchema) as any,
+    resolver: zodResolver(menuItemSchema) as Resolver<MenuItemFormValues>,
     defaultValues: {
       categoryId: "",
       name: "",
@@ -62,7 +62,7 @@ export function MenuItemManager({ menuItems, categories }: MenuItemManagerProps)
 
   // Edit form
   const editForm = useForm<MenuItemFormValues>({
-    resolver: zodResolver(menuItemSchema) as any,
+    resolver: zodResolver(menuItemSchema) as Resolver<MenuItemFormValues>,
   })
 
   const onCreateItem = async (data: MenuItemFormValues) => {
@@ -123,7 +123,7 @@ export function MenuItemManager({ menuItems, categories }: MenuItemManagerProps)
       displayOrder: item.displayOrder,
       isAvailable: item.isAvailable,
       isFeatured: item.isFeatured,
-      stock: (item as any).stock ?? 0,
+      stock: item.stock ?? 0,
     })
   }
 
@@ -148,9 +148,9 @@ export function MenuItemManager({ menuItems, categories }: MenuItemManagerProps)
           </CardHeader>
           <CardContent>
             <Form {...createForm}>
-              <form onSubmit={createForm.handleSubmit((data: any) => onCreateItem(data as any))} className="space-y-4">
+              <form onSubmit={createForm.handleSubmit(onCreateItem)} className="space-y-4">
                 <FormField
-                  control={createForm.control as any}
+                  control={createForm.control}
                   name="categoryId"
                   render={({ field }) => (
                     <FormItem>
@@ -175,7 +175,7 @@ export function MenuItemManager({ menuItems, categories }: MenuItemManagerProps)
                 />
                 
                 <FormField
-                  control={createForm.control as any}
+                  control={createForm.control}
                   name="name"
                   render={({ field }) => (
                     <FormItem>
@@ -190,7 +190,7 @@ export function MenuItemManager({ menuItems, categories }: MenuItemManagerProps)
 
                 <div className="grid grid-cols-2 gap-3">
                   <FormField
-                    control={createForm.control as any}
+                    control={createForm.control}
                     name="basePrice"
                     render={({ field }) => (
                       <FormItem>
@@ -208,7 +208,7 @@ export function MenuItemManager({ menuItems, categories }: MenuItemManagerProps)
                     )}
                   />
                   <FormField
-                    control={createForm.control as any}
+                    control={createForm.control}
                     name="stock"
                     render={({ field }) => (
                       <FormItem>
@@ -228,7 +228,7 @@ export function MenuItemManager({ menuItems, categories }: MenuItemManagerProps)
                 </div>
 
                 <FormField
-                  control={createForm.control as any}
+                  control={createForm.control}
                   name="description"
                   render={({ field }) => (
                     <FormItem>
@@ -296,10 +296,10 @@ export function MenuItemManager({ menuItems, categories }: MenuItemManagerProps)
                     {editingId === item.id ? (
                       /* Editing Form */
                       <Form {...editForm}>
-                        <form onSubmit={editForm.handleSubmit((data: any) => onUpdateItem(item.id, data as any))} className="w-full grid grid-cols-2 md:grid-cols-4 gap-3 items-end">
+                        <form onSubmit={editForm.handleSubmit((data) => onUpdateItem(item.id, data))} className="w-full grid grid-cols-2 md:grid-cols-4 gap-3 items-end">
                           <div className="col-span-2 space-y-2">
                             <FormField
-                              control={editForm.control as any}
+                              control={editForm.control}
                               name="name"
                               render={({ field }) => (
                                 <FormItem>
@@ -313,7 +313,7 @@ export function MenuItemManager({ menuItems, categories }: MenuItemManagerProps)
                             />
                           </div>
                           <FormField
-                            control={editForm.control as any}
+                            control={editForm.control}
                             name="basePrice"
                             render={({ field }) => (
                               <FormItem>
@@ -331,7 +331,7 @@ export function MenuItemManager({ menuItems, categories }: MenuItemManagerProps)
                             )}
                           />
                           <FormField
-                            control={editForm.control as any}
+                            control={editForm.control}
                             name="stock"
                             render={({ field }) => (
                               <FormItem>
@@ -382,8 +382,8 @@ export function MenuItemManager({ menuItems, categories }: MenuItemManagerProps)
                             <span>•</span>
                             <span>Price: ₹{item.basePrice}</span>
                             <span>•</span>
-                            <span className={`font-semibold ${((item as any).stock ?? 0) <= 5 ? "text-rose-500 font-bold" : "text-emerald-500"}`}>
-                              Stock: {(item as any).stock ?? 0} left
+                            <span className={`font-semibold ${item.stock <= 5 ? "text-rose-500 font-bold" : "text-emerald-500"}`}>
+                              Stock: {item.stock} left
                             </span>
                           </div>
                         </div>

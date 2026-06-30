@@ -57,7 +57,7 @@ export function MobileSidebar({ navItems, userName, userRole }: MobileSidebarPro
 
       {/* Overlay */}
       {open && (
-        <div className="fixed inset-0 z-50 flex">
+        <div className="fixed inset-0 z-50 flex lg:hidden">
           {/* Backdrop */}
           <div
             className="fixed inset-0 bg-black/60 backdrop-blur-[2px]"
@@ -65,7 +65,7 @@ export function MobileSidebar({ navItems, userName, userRole }: MobileSidebarPro
           />
 
           {/* Drawer */}
-          <div className="relative flex w-64 h-full flex-col bg-background border-r border-border z-50 animate-in slide-in-from-left duration-200">
+          <div className="relative flex w-[min(18rem,85vw)] h-dvh flex-col bg-background border-r border-border z-50 animate-in slide-in-from-left duration-200 shadow-2xl">
             {/* Header */}
             <div className="flex h-14 items-center justify-between px-4 border-b border-border">
               <div className="flex items-center gap-2">
@@ -79,13 +79,14 @@ export function MobileSidebar({ navItems, userName, userRole }: MobileSidebarPro
                 size="icon"
                 className="h-7 w-7 text-muted-foreground"
                 onClick={() => setOpen(false)}
+                aria-label="Close menu"
               >
                 <X className="h-3.5 w-3.5" />
               </Button>
             </div>
 
             {/* Nav */}
-            <nav className="flex-1 py-3 px-3 space-y-0.5 overflow-y-auto">
+            <nav className="flex-1 min-h-0 py-3 px-3 space-y-0.5 overflow-y-auto">
               {navItems.map((item) => {
                 const IconComponent = iconsMap[item.icon]
                 const isActive =
@@ -112,7 +113,7 @@ export function MobileSidebar({ navItems, userName, userRole }: MobileSidebarPro
             </nav>
 
             {/* User */}
-            <div className="border-t border-border p-3">
+            <div className="border-t border-border p-3 shrink-0">
               <div className="flex items-center gap-2.5 mb-3 px-1">
                 <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-xs font-semibold text-muted-foreground shrink-0">
                   {userName[0]?.toUpperCase() || "U"}

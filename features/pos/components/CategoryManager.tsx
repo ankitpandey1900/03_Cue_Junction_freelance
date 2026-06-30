@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useForm } from "react-hook-form"
+import { Resolver, useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { MenuCategory } from "@prisma/client"
 import { categorySchema, CategoryFormValues } from "../schemas/category.schema"
@@ -20,7 +20,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form"
-import { Trash2, Plus, Edit2, Check, X, ArrowUpDown } from "lucide-react"
+import { Trash2, Plus, Edit2, Check, X } from "lucide-react"
 
 interface CategoryManagerProps {
   categories: MenuCategory[]
@@ -32,13 +32,13 @@ export function CategoryManager({ categories }: CategoryManagerProps) {
 
   // Form for creating a category
   const createForm = useForm<CategoryFormValues>({
-    resolver: zodResolver(categorySchema) as any,
+    resolver: zodResolver(categorySchema) as Resolver<CategoryFormValues>,
     defaultValues: { name: "", description: "", displayOrder: 0, isActive: true },
   })
 
   // Form for editing a category
   const editForm = useForm<CategoryFormValues>({
-    resolver: zodResolver(categorySchema) as any,
+    resolver: zodResolver(categorySchema) as Resolver<CategoryFormValues>,
   })
 
   const onCreateCategory = async (data: CategoryFormValues) => {
@@ -113,9 +113,9 @@ export function CategoryManager({ categories }: CategoryManagerProps) {
           </CardHeader>
           <CardContent>
             <Form {...createForm}>
-              <form onSubmit={createForm.handleSubmit((data: any) => onCreateCategory(data as any))} className="space-y-4">
+              <form onSubmit={createForm.handleSubmit(onCreateCategory)} className="space-y-4">
                 <FormField
-                  control={createForm.control as any}
+                  control={createForm.control}
                   name="name"
                   render={({ field }) => (
                     <FormItem>
@@ -128,7 +128,7 @@ export function CategoryManager({ categories }: CategoryManagerProps) {
                   )}
                 />
                 <FormField
-                  control={createForm.control as any}
+                  control={createForm.control}
                   name="description"
                   render={({ field }) => (
                     <FormItem>
@@ -142,7 +142,7 @@ export function CategoryManager({ categories }: CategoryManagerProps) {
                 />
                 {/* Simplified layout */}
                 <FormField
-                  control={createForm.control as any}
+                  control={createForm.control}
                   name="isActive"
                   render={({ field }) => (
                     <FormItem className="flex flex-row items-center justify-between rounded-lg border border-border/50 p-3 bg-background/30">
@@ -188,10 +188,10 @@ export function CategoryManager({ categories }: CategoryManagerProps) {
                     {editingId === cat.id ? (
                       /* Editing Mode */
                       <Form {...editForm}>
-                        <form onSubmit={editForm.handleSubmit((data: any) => onUpdateCategory(cat.id, data as any))} className="w-full grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+                        <form onSubmit={editForm.handleSubmit((data) => onUpdateCategory(cat.id, data))} className="w-full grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
                           <div className="md:col-span-2 space-y-2">
                             <FormField
-                              control={editForm.control as any}
+                              control={editForm.control}
                               name="name"
                               render={({ field }) => (
                                 <FormItem>
@@ -204,7 +204,7 @@ export function CategoryManager({ categories }: CategoryManagerProps) {
                               )}
                             />
                             <FormField
-                              control={editForm.control as any}
+                              control={editForm.control}
                               name="description"
                               render={({ field }) => (
                                 <FormItem>

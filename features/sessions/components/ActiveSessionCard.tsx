@@ -11,9 +11,9 @@ import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { format } from "date-fns"
-import { Square, Loader2, ShoppingBag, Clock } from "lucide-react"
+import { Square, Loader2, ShoppingBag } from "lucide-react"
 
-type SessionWithDetails = Session & {
+export type SessionWithDetails = Session & {
   table: Table & { tableType: TableType }
   customer: Customer | null
   orders: (CustomerOrder & { orderItems: CustomerOrderItem[] })[]

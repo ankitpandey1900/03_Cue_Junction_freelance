@@ -34,7 +34,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Trash2, Plus, Pencil, X } from "lucide-react"
+import { Trash2, Pencil, X } from "lucide-react"
 import { TableWithDetails } from "../services/table.service"
 
 interface ManageAssetsClientProps {
@@ -107,7 +107,7 @@ export function ManageAssetsClient({ tables, tableTypes }: ManageAssetsClientPro
     setEditingTableId(t.id)
     tableForm.setValue("name", t.name)
     tableForm.setValue("tableTypeId", t.tableTypeId)
-    tableForm.setValue("status", t.status as any)
+    tableForm.setValue("status", t.status as TableFormValues["status"])
   }
 
   const handleCancelTypeEdit = () => {

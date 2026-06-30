@@ -1,9 +1,9 @@
 export function formatActionError(
-  error: any,
+  error: unknown,
   defaultMessage: string = "An unexpected error occurred."
 ): string {
   // Check if it's a Prisma error (they typically have a .code starting with P)
-  if (error && typeof error === "object" && typeof error.code === "string" && error.code.startsWith("P")) {
+  if (error && typeof error === "object" && "code" in error && typeof error.code === "string" && error.code.startsWith("P")) {
     switch (error.code) {
       case "P2002":
         return "A record with this data already exists."

@@ -1,6 +1,7 @@
 import { Session } from "@prisma/client"
 import { StartSessionFormValues } from "../schemas/session.schema"
 import prisma from "@/lib/prisma"
+import { roundMoney } from "@/lib/formatters"
 
 export async function getActiveSessions() {
   return await prisma.session.findMany({
@@ -111,9 +112,12 @@ export async function endSession(sessionId: string): Promise<{ session: Session,
       data: { status: "AVAILABLE" }
     })
 
-    // Fetch related Orders that are PENDING for this session
+    // Fetch all non-cancelled orders for this session. Served items are still billable.
     const orders = await tx.customerOrder.findMany({
-      where: { sessionId, status: "PENDING" },
+      where: {
+        sessionId,
+        status: { not: "CANCELLED" }
+      },
       include: { orderItems: true }
     })
 
@@ -123,25 +127,33 @@ export async function endSession(sessionId: string): Promise<{ session: Session,
       cafeTotal += order.total
     }
 
-    const grandTotal = cost + cafeTotal
+    const sessionTotal = roundMoney(cost)
+    cafeTotal = roundMoney(cafeTotal)
+    const subtotal = roundMoney(sessionTotal + cafeTotal)
+    const taxAmount = 0
+    const discountAmount = 0
+    const grandTotal = roundMoney(subtotal - discountAmount)
 
     // Generate Invoice
     const invoice = await tx.invoice.create({
       data: {
         sessionId,
         customerId: session.customerId ?? undefined,
-        sessionTotal: cost,
+        sessionTotal,
         cafeTotal,
         grandTotal,
         status: "UNPAID",
-        taxAmount: (cost + cafeTotal) * 0.05, // default 5%
-        discountAmount: 0,
+        taxAmount,
+        discountAmount,
       }
     })
 
-    // Mark orders as SERVED (fully completed and billed)
+    // Mark billable session orders as served/completed.
     await tx.customerOrder.updateMany({
-      where: { sessionId, status: "PENDING" },
+      where: {
+        sessionId,
+        status: { in: ["PENDING", "PREPARING", "READY"] }
+      },
       data: { status: "SERVED" }
     })
 

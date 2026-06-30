@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Customer } from "@prisma/client"
 import {
   Dialog,
@@ -62,13 +62,13 @@ export function StartSessionDialog({
     }
   }
 
-  // Reset form when opened
-  useEffect(() => {
-    if (open) {
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (nextOpen) {
       setCustomerId("guest")
       setSearchQuery("")
     }
-  }, [open])
+    onOpenChange(nextOpen)
+  }
 
   // Filter customers by name or phone
   const filteredCustomers = customers.filter((c) =>
@@ -77,7 +77,7 @@ export function StartSessionDialog({
   )
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Start Session on {tableName}</DialogTitle>

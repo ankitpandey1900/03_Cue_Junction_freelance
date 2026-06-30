@@ -71,7 +71,7 @@ export default async function DashboardLayout({
       </aside>
 
       {/* Main content */}
-      <div className="flex-1 lg:pl-60 z-10 flex flex-col min-h-screen">
+      <div className="flex-1 lg:pl-60 z-10 flex flex-col min-h-screen min-w-0 overflow-x-hidden">
         {/* Mobile header */}
         <header className="sticky top-0 z-40 flex h-14 items-center justify-between gap-4 border-b border-border bg-background/95 backdrop-blur-sm px-4 lg:hidden">
           <div className="flex items-center gap-2.5">
@@ -88,7 +88,7 @@ export default async function DashboardLayout({
           <ThemeToggle />
         </header>
 
-        <main className="flex-1 p-4 lg:p-6">
+        <main className="flex-1 p-3 sm:p-4 lg:p-6 min-w-0">
           {children}
         </main>
       </div>

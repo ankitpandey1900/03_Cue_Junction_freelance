@@ -1,4 +1,14 @@
 import prisma from "@/lib/prisma"
+import { roundMoney } from "@/lib/formatters"
+
+export type UpdateInvoiceInput = {
+  sessionTotal: number
+  cafeTotal: number
+  discountAmount: number
+  status: string
+  paymentMethod?: string | null
+  notes?: string | null
+}
 
 export async function getInvoices() {
   return await prisma.invoice.findMany({
@@ -90,5 +100,56 @@ export async function updateInvoiceStatus(invoiceId: string, status: string) {
   return await prisma.invoice.update({
     where: { id: invoiceId },
     data: { status }
+  })
+}
+
+export async function updateInvoice(invoiceId: string, data: UpdateInvoiceInput) {
+  const sessionTotal = roundMoney(Math.max(0, data.sessionTotal))
+  const cafeTotal = roundMoney(Math.max(0, data.cafeTotal))
+  const discountAmount = roundMoney(data.discountAmount)
+  const grandTotal = roundMoney(Math.max(0, sessionTotal + cafeTotal - discountAmount))
+
+  return await prisma.invoice.update({
+    where: { id: invoiceId },
+    data: {
+      sessionTotal,
+      cafeTotal,
+      discountAmount,
+      taxAmount: 0,
+      grandTotal,
+      status: data.status,
+      paymentMethod: data.paymentMethod || null,
+      notes: data.notes || null,
+    },
+  })
+}
+
+export async function deleteInvoice(invoiceId: string) {
+  return await prisma.$transaction(async (tx) => {
+    const invoice = await tx.invoice.findUnique({
+      where: { id: invoiceId },
+      include: { payments: true },
+    })
+
+    if (!invoice) throw new Error("Invoice not found")
+
+    const paidAmount = invoice.payments.reduce((sum, payment) => sum + payment.amount, 0)
+
+    await tx.invoice.delete({
+      where: { id: invoiceId },
+    })
+
+    if (invoice.customerId && paidAmount > 0) {
+      await tx.customer.update({
+        where: { id: invoice.customerId },
+        data: {
+          totalSpend: {
+            decrement: paidAmount,
+          },
+        },
+      })
+    }
+
+    return invoice
   })
 }

@@ -1,12 +1,12 @@
 "use client"
 
 import { useState } from "react"
-import { ActiveSessionCard } from "./ActiveSessionCard"
+import { ActiveSessionCard, SessionWithDetails } from "./ActiveSessionCard"
 import { Input } from "@/components/ui/input"
 import { Search, Timer } from "lucide-react"
 
 interface ActiveSessionsClientProps {
-  sessions: any[]
+  sessions: SessionWithDetails[]
 }
 
 export function ActiveSessionsClient({ sessions }: ActiveSessionsClientProps) {

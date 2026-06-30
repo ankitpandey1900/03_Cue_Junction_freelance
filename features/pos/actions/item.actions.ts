@@ -3,21 +3,15 @@
 import { revalidatePath } from "next/cache"
 import { menuItemSchema, MenuItemFormValues } from "../schemas/item.schema"
 import * as itemService from "../services/item.service"
-import { auth } from "@/lib/auth"
-import { headers } from "next/headers"
 import { formatActionError } from "@/lib/errors"
 import { ActionResponse } from "./category.actions"
-
-async function verifyAdmin(): Promise<boolean> {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  })
-  return session?.user?.role === "ADMIN"
-}
+import { requireAdmin } from "@/lib/action-auth"
 
 export async function createMenuItemAction(data: MenuItemFormValues): Promise<ActionResponse> {
-  if (!await verifyAdmin()) {
-    return { success: false, message: "Unauthorized: Admins only" }
+  try {
+    await requireAdmin()
+  } catch (error) {
+    return { success: false, message: formatActionError(error, "Unauthorized: Admins only") }
   }
 
   const validated = menuItemSchema.safeParse(data)
@@ -38,7 +32,7 @@ export async function createMenuItemAction(data: MenuItemFormValues): Promise<Ac
       message: "Menu item created successfully!",
       data: item,
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     return {
       success: false,
       message: formatActionError(error, "Failed to create menu item"),
@@ -47,8 +41,10 @@ export async function createMenuItemAction(data: MenuItemFormValues): Promise<Ac
 }
 
 export async function updateMenuItemAction(id: string, data: MenuItemFormValues): Promise<ActionResponse> {
-  if (!await verifyAdmin()) {
-    return { success: false, message: "Unauthorized: Admins only" }
+  try {
+    await requireAdmin()
+  } catch (error) {
+    return { success: false, message: formatActionError(error, "Unauthorized: Admins only") }
   }
 
   const validated = menuItemSchema.safeParse(data)
@@ -69,7 +65,7 @@ export async function updateMenuItemAction(id: string, data: MenuItemFormValues)
       message: "Menu item updated successfully!",
       data: item,
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     return {
       success: false,
       message: formatActionError(error, "Failed to update menu item"),
@@ -78,8 +74,10 @@ export async function updateMenuItemAction(id: string, data: MenuItemFormValues)
 }
 
 export async function toggleItemAvailabilityAction(id: string, isAvailable: boolean): Promise<ActionResponse> {
-  if (!await verifyAdmin()) {
-    return { success: false, message: "Unauthorized: Admins only" }
+  try {
+    await requireAdmin()
+  } catch (error) {
+    return { success: false, message: formatActionError(error, "Unauthorized: Admins only") }
   }
 
   try {
@@ -90,7 +88,7 @@ export async function toggleItemAvailabilityAction(id: string, isAvailable: bool
       message: `Item is now ${isAvailable ? "available" : "unavailable"}.`,
       data: item,
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     return {
       success: false,
       message: formatActionError(error, "Failed to update item availability"),
@@ -99,8 +97,10 @@ export async function toggleItemAvailabilityAction(id: string, isAvailable: bool
 }
 
 export async function deleteMenuItemAction(id: string): Promise<ActionResponse> {
-  if (!await verifyAdmin()) {
-    return { success: false, message: "Unauthorized: Admins only" }
+  try {
+    await requireAdmin()
+  } catch (error) {
+    return { success: false, message: formatActionError(error, "Unauthorized: Admins only") }
   }
 
   try {
@@ -116,7 +116,7 @@ export async function deleteMenuItemAction(id: string): Promise<ActionResponse> 
         ? "Menu item has historical order logs. It has been disabled (made unavailable) instead of deleted."
         : "Menu item deleted successfully!",
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     return {
       success: false,
       message: formatActionError(error, "Failed to delete menu item"),

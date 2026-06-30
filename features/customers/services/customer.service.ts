@@ -1,4 +1,4 @@
-import { Customer } from "@prisma/client"
+import { Customer, Prisma } from "@prisma/client"
 import { CustomerFormValues } from "../schemas/customer.schema"
 import prisma from "@/lib/prisma"
 
@@ -55,6 +55,147 @@ export async function getCustomerById(id: string): Promise<Customer | null> {
     return await prisma.customer.update({
       where: { id },
       data: { totalSpend: actualSpend }
+    })
+  }
+
+  return customer
+}
+
+export type CustomerProfile = Prisma.CustomerGetPayload<{
+  include: {
+    invoices: {
+      include: {
+        payments: true
+        session: {
+          include: {
+            table: true
+          }
+        }
+      }
+    }
+    sessions: {
+      include: {
+        table: {
+          include: {
+            tableType: true
+          }
+        }
+        invoice: true
+        orders: {
+          include: {
+            orderItems: true
+          }
+        }
+      }
+    }
+    orders: {
+      include: {
+        orderItems: true
+        session: {
+          include: {
+            table: true
+          }
+        }
+      }
+    }
+  }
+}>
+
+export async function getCustomerProfile(id: string): Promise<CustomerProfile | null> {
+  const customer = await prisma.customer.findUnique({
+    where: { id },
+    include: {
+      invoices: {
+        include: {
+          payments: true,
+          session: {
+            include: {
+              table: true,
+            },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+      },
+      sessions: {
+        include: {
+          table: {
+            include: {
+              tableType: true,
+            },
+          },
+          invoice: true,
+          orders: {
+            include: {
+              orderItems: true,
+            },
+          },
+        },
+        orderBy: { startTime: "desc" },
+      },
+      orders: {
+        include: {
+          orderItems: true,
+          session: {
+            include: {
+              table: true,
+            },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+      },
+    },
+  })
+
+  if (!customer) return null
+
+  const actualSpend = customer.invoices.reduce((sum, inv) => {
+    return sum + inv.payments.reduce((paymentSum, payment) => paymentSum + payment.amount, 0)
+  }, 0)
+
+  if (customer.totalSpend !== actualSpend) {
+    return await prisma.customer.update({
+      where: { id },
+      data: { totalSpend: actualSpend },
+      include: {
+        invoices: {
+          include: {
+            payments: true,
+            session: {
+              include: {
+                table: true,
+              },
+            },
+          },
+          orderBy: { createdAt: "desc" },
+        },
+        sessions: {
+          include: {
+            table: {
+              include: {
+                tableType: true,
+              },
+            },
+            invoice: true,
+            orders: {
+              include: {
+                orderItems: true,
+              },
+            },
+          },
+          orderBy: { startTime: "desc" },
+        },
+        orders: {
+          include: {
+            orderItems: true,
+            session: {
+              include: {
+                table: true,
+              },
+            },
+          },
+          orderBy: { createdAt: "desc" },
+        },
+      },
     })
   }
 

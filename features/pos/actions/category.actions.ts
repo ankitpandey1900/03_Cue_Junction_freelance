@@ -3,27 +3,21 @@
 import { revalidatePath } from "next/cache"
 import { categorySchema, CategoryFormValues } from "../schemas/category.schema"
 import * as categoryService from "../services/category.service"
-import { auth } from "@/lib/auth"
-import { headers } from "next/headers"
 import { formatActionError } from "@/lib/errors"
+import { requireAdmin } from "@/lib/action-auth"
 
-export type ActionResponse<T = any> = {
+export type ActionResponse<T = unknown> = {
   success: boolean
   message: string
   data?: T
   errors?: Record<string, string[]>
 }
 
-async function verifyAdmin(): Promise<boolean> {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  })
-  return session?.user?.role === "ADMIN"
-}
-
 export async function createCategoryAction(data: CategoryFormValues): Promise<ActionResponse> {
-  if (!await verifyAdmin()) {
-    return { success: false, message: "Unauthorized: Admins only" }
+  try {
+    await requireAdmin()
+  } catch (error) {
+    return { success: false, message: formatActionError(error, "Unauthorized: Admins only") }
   }
 
   const validated = categorySchema.safeParse(data)
@@ -44,7 +38,7 @@ export async function createCategoryAction(data: CategoryFormValues): Promise<Ac
       message: "Category created successfully!",
       data: category,
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     return {
       success: false,
       message: formatActionError(error, "Failed to create category"),
@@ -53,8 +47,10 @@ export async function createCategoryAction(data: CategoryFormValues): Promise<Ac
 }
 
 export async function updateCategoryAction(id: string, data: CategoryFormValues): Promise<ActionResponse> {
-  if (!await verifyAdmin()) {
-    return { success: false, message: "Unauthorized: Admins only" }
+  try {
+    await requireAdmin()
+  } catch (error) {
+    return { success: false, message: formatActionError(error, "Unauthorized: Admins only") }
   }
 
   const validated = categorySchema.safeParse(data)
@@ -75,7 +71,7 @@ export async function updateCategoryAction(id: string, data: CategoryFormValues)
       message: "Category updated successfully!",
       data: category,
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     return {
       success: false,
       message: formatActionError(error, "Failed to update category"),
@@ -84,8 +80,10 @@ export async function updateCategoryAction(id: string, data: CategoryFormValues)
 }
 
 export async function deleteCategoryAction(id: string): Promise<ActionResponse> {
-  if (!await verifyAdmin()) {
-    return { success: false, message: "Unauthorized: Admins only" }
+  try {
+    await requireAdmin()
+  } catch (error) {
+    return { success: false, message: formatActionError(error, "Unauthorized: Admins only") }
   }
 
   try {
@@ -96,7 +94,7 @@ export async function deleteCategoryAction(id: string): Promise<ActionResponse> 
       success: true,
       message: "Category deleted successfully!",
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     return {
       success: false,
       message: formatActionError(error, "Failed to delete category"),

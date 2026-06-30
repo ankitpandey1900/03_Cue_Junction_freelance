@@ -21,7 +21,7 @@ export function LoginForm() {
     setError("")
 
     try {
-      const { data, error } = await authClient.signIn.email({
+      const { error } = await authClient.signIn.email({
         email,
         password,
       })
@@ -30,8 +30,8 @@ export function LoginForm() {
       } else {
         router.push("/")
       }
-    } catch (err: any) {
-      setError(err.message || "An error occurred during login")
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "An error occurred during login")
     } finally {
       setLoading(false)
     }

@@ -55,7 +55,7 @@ export function CustomerForm({ initialData, onSuccess }: CustomerFormProps) {
       } else {
         toast.error(response.message)
       }
-    } catch (error) {
+    } catch {
       toast.error("Something went wrong.")
     } finally {
       setLoading(false)

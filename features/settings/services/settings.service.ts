@@ -15,8 +15,8 @@ export async function getSettings(): Promise<CafeSettings> {
         phone: "+91 98765 43210",
         email: "contact@cuejunction.com",
         currency: "INR",
-        taxRate: 5.0,
-        gstin: "22AAAAA0000A1Z5",
+        taxRate: 0,
+        gstin: "",
         businessHours: "10:00 AM - 11:00 PM"
       }
     })
@@ -37,7 +37,7 @@ export async function updateSettings(data: CafeSettingsFormValues): Promise<Cafe
       phone: data.phone || "",
       email: data.email || "",
       currency: data.currency || "INR",
-      taxRate: data.taxRate ?? 5.0,
+      taxRate: data.taxRate ?? 0,
       gstin: data.gstin || "",
       businessHours: data.businessHours || ""
     }

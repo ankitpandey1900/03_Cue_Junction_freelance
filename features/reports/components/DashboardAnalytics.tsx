@@ -38,6 +38,9 @@ interface InvoiceRaw {
 interface DashboardAnalyticsProps {
   stats: {
     totalRevenue: number
+    openBalance: number
+    openInvoicesCount: number
+    paidInvoicesCount: number
     avgOrderValue: number
     activeSessionsCount: number
     occupiedTables: number
@@ -54,6 +57,11 @@ interface DashboardAnalyticsProps {
 
 export function DashboardAnalytics({ stats }: DashboardAnalyticsProps) {
   const [filterPeriod, setFilterPeriod] = useState<"daily" | "weekly" | "monthly">("weekly")
+  const handleFilterPeriodChange = (value: "daily" | "weekly" | "monthly" | null) => {
+    if (value) {
+      setFilterPeriod(value)
+    }
+  }
 
   const tableData = [
     { name: "Occupied", value: stats.occupiedTables, color: "#ef4444" },
@@ -132,8 +140,9 @@ export function DashboardAnalytics({ stats }: DashboardAnalyticsProps) {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[11px] text-muted-foreground uppercase font-bold tracking-wider">30d Revenue</p>
+                <p className="text-[11px] text-muted-foreground uppercase font-bold tracking-wider">30d Collected</p>
                 <p className="text-xl font-bold font-mono text-foreground mt-1">₹{stats.totalRevenue.toFixed(0)}</p>
+                <p className="text-[10px] text-muted-foreground mt-1">{stats.paidInvoicesCount} paid/partial bills</p>
               </div>
               <div className="h-9 w-9 rounded-lg bg-emerald-500/10 flex items-center justify-center">
                 <IndianRupee className="h-4 w-4 text-emerald-500" />
@@ -145,8 +154,9 @@ export function DashboardAnalytics({ stats }: DashboardAnalyticsProps) {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[11px] text-muted-foreground uppercase font-bold tracking-wider">Avg Order Value</p>
-                <p className="text-xl font-bold font-mono text-foreground mt-1">₹{stats.avgOrderValue.toFixed(0)}</p>
+                <p className="text-[11px] text-muted-foreground uppercase font-bold tracking-wider">Open Balance</p>
+                <p className="text-xl font-bold font-mono text-amber-500 mt-1">₹{stats.openBalance.toFixed(0)}</p>
+                <p className="text-[10px] text-muted-foreground mt-1">{stats.openInvoicesCount} open invoices</p>
               </div>
               <div className="h-9 w-9 rounded-lg bg-blue-500/10 flex items-center justify-center">
                 <ShoppingBag className="h-4 w-4 text-blue-500" />
@@ -171,8 +181,9 @@ export function DashboardAnalytics({ stats }: DashboardAnalyticsProps) {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[11px] text-muted-foreground uppercase font-bold tracking-wider">Total Customers</p>
-                <p className="text-xl font-bold font-mono text-foreground mt-1">{stats.totalCustomers}</p>
+                <p className="text-[11px] text-muted-foreground uppercase font-bold tracking-wider">Avg Bill Paid</p>
+                <p className="text-xl font-bold font-mono text-foreground mt-1">₹{stats.avgOrderValue.toFixed(0)}</p>
+                <p className="text-[10px] text-muted-foreground mt-1">{stats.totalCustomers} customers tracked</p>
               </div>
               <div className="h-9 w-9 rounded-lg bg-purple-500/10 flex items-center justify-center">
                 <Users className="h-4 w-4 text-purple-500" />
@@ -192,7 +203,7 @@ export function DashboardAnalytics({ stats }: DashboardAnalyticsProps) {
               <CardTitle className="text-sm font-semibold text-foreground">Revenue &amp; Sales Trends</CardTitle>
               <p className="text-[10px] text-muted-foreground">Session Play (Green) vs Cafe Food (Yellow)</p>
             </div>
-            <Select value={filterPeriod} onValueChange={(val: any) => setFilterPeriod(val)}>
+            <Select value={filterPeriod} onValueChange={handleFilterPeriodChange}>
               <SelectTrigger className="w-[110px] h-8 text-xs bg-background/50 border-border/50">
                 <SelectValue placeholder="Weekly" />
               </SelectTrigger>

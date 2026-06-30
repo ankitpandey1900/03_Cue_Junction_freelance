@@ -4,11 +4,10 @@ import { revalidatePath } from "next/cache"
 import { placeOrderSchema, PlaceOrderValues } from "../schemas/pos.schema"
 import * as posService from "../services/pos.service"
 
-import { auth } from "@/lib/auth"
-import { headers } from "next/headers"
 import { formatActionError } from "@/lib/errors"
+import { requireSession } from "@/lib/action-auth"
 
-export type ActionResponse<T = any> = {
+export type ActionResponse<T = unknown> = {
   success: boolean
   message: string
   data?: T
@@ -16,11 +15,11 @@ export type ActionResponse<T = any> = {
 }
 
 export async function placeOrderAction(data: PlaceOrderValues): Promise<ActionResponse> {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  })
-  if (!session) {
-    return { success: false, message: "Unauthorized. Please log in." }
+  let session
+  try {
+    session = await requireSession()
+  } catch (error) {
+    return { success: false, message: formatActionError(error, "Unauthorized. Please log in.") }
   }
 
   const validated = placeOrderSchema.safeParse(data)
@@ -45,7 +44,7 @@ export async function placeOrderAction(data: PlaceOrderValues): Promise<ActionRe
       message: "Order placed successfully!",
       data: order,
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     return {
       success: false,
       message: formatActionError(error, "Failed to place order"),
@@ -54,11 +53,10 @@ export async function placeOrderAction(data: PlaceOrderValues): Promise<ActionRe
 }
 
 export async function updateOrderStatusAction(orderId: string, status: string): Promise<ActionResponse> {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  })
-  if (!session) {
-    return { success: false, message: "Unauthorized. Please log in." }
+  try {
+    await requireSession()
+  } catch (error) {
+    return { success: false, message: formatActionError(error, "Unauthorized. Please log in.") }
   }
 
   try {
@@ -71,7 +69,7 @@ export async function updateOrderStatusAction(orderId: string, status: string): 
       message: `Order status updated to ${status}`,
       data: updated,
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     return {
       success: false,
       message: formatActionError(error, "Failed to update order status"),

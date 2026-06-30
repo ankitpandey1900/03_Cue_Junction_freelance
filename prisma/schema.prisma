@@ -228,6 +228,7 @@ model CustomerOrderItem {
 // -----------------------------------------
 model Invoice {
   id              String        @id @default(cuid())
+  invoiceNumber   Int           @unique @default(autoincrement())
   sessionId       String?       @unique
   customerId      String?
   sessionTotal    Float         @default(0)
@@ -284,7 +285,7 @@ model CafeSettings {
   phone               String?
   email               String?
   currency            String    @default("INR")
-  taxRate             Float     @default(5.0)
+  taxRate             Float     @default(0)
   gstin               String?
   businessHours       String?
   updatedAt           DateTime  @updatedAt

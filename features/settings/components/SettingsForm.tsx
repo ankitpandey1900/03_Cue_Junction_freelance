@@ -16,7 +16,6 @@ import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { 
   Store, 
-  IndianRupee, 
   FileText, 
   Users, 
   ShieldAlert, 
@@ -25,7 +24,6 @@ import {
   MapPin, 
   Phone, 
   Mail, 
-  Percent, 
   CreditCard,
   Download,
   Upload,
@@ -57,7 +55,7 @@ export function SettingsForm({ initialData }: { initialData: CafeSettings }) {
       phone: initialData.phone || "",
       email: initialData.email || "",
       currency: initialData.currency || "INR",
-      taxRate: initialData.taxRate ?? 5.0,
+      taxRate: initialData.taxRate ?? 0,
       gstin: initialData.gstin || "",
       businessHours: initialData.businessHours || "",
     },

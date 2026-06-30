@@ -21,7 +21,7 @@ export async function getTables(): Promise<TableWithDetails[]> {
     orderBy: {
       name: 'asc',
     },
-  }) as any
+  })
 }
 
 export async function getTableTypes(): Promise<TableType[]> {
@@ -110,4 +110,3 @@ export async function deleteTableType(id: string): Promise<TableType> {
     data: { isArchived: true }
   })
 }
-

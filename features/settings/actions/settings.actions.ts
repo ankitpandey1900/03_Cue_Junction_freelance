@@ -5,8 +5,9 @@ import { cafeSettingsSchema, CafeSettingsFormValues } from "../schemas/settings.
 import * as settingsService from "../services/settings.service"
 
 import { formatActionError } from "@/lib/errors"
+import { requireAdmin } from "@/lib/action-auth"
 
-export type ActionResponse<T = any> = {
+export type ActionResponse<T = unknown> = {
   success: boolean
   message: string
   data?: T
@@ -14,6 +15,12 @@ export type ActionResponse<T = any> = {
 }
 
 export async function updateSettingsAction(data: CafeSettingsFormValues): Promise<ActionResponse> {
+  try {
+    await requireAdmin()
+  } catch (error) {
+    return { success: false, message: formatActionError(error, "Unauthorized: Admins only") }
+  }
+
   const validated = cafeSettingsSchema.safeParse(data)
   
   if (!validated.success) {
@@ -32,7 +39,7 @@ export async function updateSettingsAction(data: CafeSettingsFormValues): Promis
       message: "Settings updated successfully",
       data: updated,
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     return {
       success: false,
       message: formatActionError(error, "Failed to update settings"),

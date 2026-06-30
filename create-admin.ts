@@ -24,7 +24,7 @@ async function main() {
     });
     
     // Create Staff
-    const staff = await auth.api.signUpEmail({
+    await auth.api.signUpEmail({
       body: {
         email: "staff@cuejunction.com",
         password: "password123",

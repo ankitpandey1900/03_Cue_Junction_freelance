@@ -20,9 +20,5 @@ export default async function InvoiceDetailPage({
     notFound()
   }
 
-  return (
-    <div className="p-6 lg:p-8">
-      <InvoiceDetailView invoice={invoice} settings={settings} />
-    </div>
-  )
+  return <InvoiceDetailView invoice={invoice} settings={settings} />
 }

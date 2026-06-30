@@ -5,8 +5,9 @@ import { customerSchema, CustomerFormValues } from "../schemas/customer.schema"
 import * as customerService from "../services/customer.service"
 
 import { formatActionError } from "@/lib/errors"
+import { requireSession } from "@/lib/action-auth"
 
-export type ActionResponse<T = any> = {
+export type ActionResponse<T = unknown> = {
   success: boolean
   message: string
   data?: T
@@ -14,6 +15,12 @@ export type ActionResponse<T = any> = {
 }
 
 export async function createCustomerAction(data: CustomerFormValues): Promise<ActionResponse> {
+  try {
+    await requireSession()
+  } catch (error) {
+    return { success: false, message: formatActionError(error, "Unauthorized. Please log in.") }
+  }
+
   // Validate input
   const validated = customerSchema.safeParse(data)
   
@@ -42,7 +49,7 @@ export async function createCustomerAction(data: CustomerFormValues): Promise<Ac
       message: "Customer created successfully",
       data: customer,
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     return {
       success: false,
       message: formatActionError(error, "Failed to create customer"),
@@ -51,6 +58,12 @@ export async function createCustomerAction(data: CustomerFormValues): Promise<Ac
 }
 
 export async function updateCustomerAction(id: string, data: CustomerFormValues): Promise<ActionResponse> {
+  try {
+    await requireSession()
+  } catch (error) {
+    return { success: false, message: formatActionError(error, "Unauthorized. Please log in.") }
+  }
+
   const validated = customerSchema.safeParse(data)
   
   if (!validated.success) {
@@ -78,7 +91,7 @@ export async function updateCustomerAction(id: string, data: CustomerFormValues)
       message: "Customer updated successfully",
       data: customer,
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     return {
       success: false,
       message: formatActionError(error, "Failed to update customer"),

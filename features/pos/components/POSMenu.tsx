@@ -7,7 +7,6 @@ import { toast } from "sonner"
 import Link from "next/link"
 import { placeOrderAction } from "../actions/pos.actions"
 import { Plus, Minus, ShoppingCart, Search, Trash2, Loader2 } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import {
@@ -64,7 +63,6 @@ export function POSMenu({ menuItems, activeSessions, initialSessionId }: POSMenu
 
   // Billing parameters
   const [discount, setDiscount] = useState<number>(0)
-  const [taxPercent, setTaxPercent] = useState<number>(5)
   const [notes, setNotes] = useState("")
 
   // Refs for shortcuts
@@ -156,7 +154,7 @@ export function POSMenu({ menuItems, activeSessions, initialSessionId }: POSMenu
         })),
         notes: notes || undefined,
         discount,
-        tax: Number(taxAmount.toFixed(2)),
+        tax: 0,
       }
       const res = await placeOrderAction(orderData)
 
@@ -195,8 +193,7 @@ export function POSMenu({ menuItems, activeSessions, initialSessionId }: POSMenu
 
   // Live Bill calculations
   const subtotal = cart.reduce((acc, item) => acc + item.menuItem.basePrice * item.quantity, 0)
-  const taxAmount = Math.max(0, (subtotal - discount) * (taxPercent / 100))
-  const grandTotal = Math.max(0, subtotal - discount + taxAmount)
+  const grandTotal = Math.max(0, subtotal - discount)
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -423,8 +420,8 @@ export function POSMenu({ menuItems, activeSessions, initialSessionId }: POSMenu
                   />
                 </div>
 
-                {/* Discount & Tax */}
-                <div className="grid grid-cols-2 gap-2">
+                {/* Discount */}
+                <div className="grid grid-cols-1 gap-2">
                   <div className="space-y-1">
                     <Label className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
                       Discount (₹)
@@ -434,18 +431,6 @@ export function POSMenu({ menuItems, activeSessions, initialSessionId }: POSMenu
                       placeholder="0"
                       value={discount || ""}
                       onChange={(e) => setDiscount(Math.max(0, Number(e.target.value)))}
-                      className="h-8 text-xs font-mono"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
-                      Tax (%)
-                    </Label>
-                    <Input
-                      type="number"
-                      placeholder="5"
-                      value={taxPercent || ""}
-                      onChange={(e) => setTaxPercent(Math.max(0, Number(e.target.value)))}
                       className="h-8 text-xs font-mono"
                     />
                   </div>
@@ -461,12 +446,6 @@ export function POSMenu({ menuItems, activeSessions, initialSessionId }: POSMenu
                     <div className="flex justify-between text-emerald-500">
                       <span>Discount</span>
                       <span className="font-mono">-₹{discount.toFixed(0)}</span>
-                    </div>
-                  )}
-                  {taxAmount > 0 && (
-                    <div className="flex justify-between text-muted-foreground">
-                      <span>Tax ({taxPercent}%)</span>
-                      <span className="font-mono">₹{taxAmount.toFixed(0)}</span>
                     </div>
                   )}
                   <div className="flex justify-between text-sm font-semibold text-foreground pt-1.5 border-t border-dashed border-border">

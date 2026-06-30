@@ -39,7 +39,6 @@ export async function getDailyRevenue(days: number = 7) {
 
 export async function getDashboardStats() {
   const now = new Date()
-  const sevenDaysAgo = subDays(now, 7)
   const thirtyDaysAgo = subDays(now, 30)
 
   // Invoices metrics
@@ -48,10 +47,18 @@ export async function getDashboardStats() {
     include: { payments: true }
   })
 
-  const totalInvoicesCount = invoices.length
-  const totalRevenue = invoices
-    .filter(inv => inv.status === "PAID" || inv.status === "PARTIAL")
-    .reduce((sum, inv) => sum + inv.grandTotal, 0)
+  const paidOrPartialInvoices = invoices.filter(inv => inv.status === "PAID" || inv.status === "PARTIAL")
+  const totalInvoicesCount = paidOrPartialInvoices.length
+  const totalRevenue = paidOrPartialInvoices.reduce((sum, inv) => {
+    return sum + inv.payments.reduce((paymentSum, payment) => paymentSum + payment.amount, 0)
+  }, 0)
+  const openBalance = invoices
+    .filter(inv => inv.status === "UNPAID" || inv.status === "PARTIAL")
+    .reduce((sum, inv) => {
+      const paid = inv.payments.reduce((paymentSum, payment) => paymentSum + payment.amount, 0)
+      return sum + Math.max(0, inv.grandTotal - paid)
+    }, 0)
+  const openInvoicesCount = invoices.filter(inv => inv.status === "UNPAID" || inv.status === "PARTIAL").length
   
   const avgOrderValue = totalInvoicesCount > 0 ? totalRevenue / totalInvoicesCount : 0
 
@@ -137,6 +144,9 @@ export async function getDashboardStats() {
 
   return {
     totalRevenue,
+    openBalance,
+    openInvoicesCount,
+    paidInvoicesCount: paidOrPartialInvoices.length,
     avgOrderValue,
     activeSessionsCount,
     occupiedTables,
