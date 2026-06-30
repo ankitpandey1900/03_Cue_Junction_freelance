@@ -1,0 +1,261 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import { Session, Table, TableType, Customer, CustomerOrder, CustomerOrderItem } from "@prisma/client"
+import { Card, CardContent } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { endSessionAction } from "../actions/session.actions"
+import { updateOrderStatusAction } from "@/features/pos/actions/pos.actions"
+import { toast } from "sonner"
+import { useRouter } from "next/navigation"
+import Link from "next/link"
+import { format } from "date-fns"
+import { Square, Loader2, ShoppingBag, Clock } from "lucide-react"
+
+type SessionWithDetails = Session & {
+  table: Table & { tableType: TableType }
+  customer: Customer | null
+  orders: (CustomerOrder & { orderItems: CustomerOrderItem[] })[]
+}
+
+interface ActiveSessionCardProps {
+  session: SessionWithDetails
+}
+
+export function ActiveSessionCard({ session }: ActiveSessionCardProps) {
+  const [elapsedSeconds, setElapsedSeconds] = useState(0)
+  const [loading, setLoading] = useState(false)
+  const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null)
+  const router = useRouter()
+
+  const handleToggleOrderStatus = async (orderId: string, currentStatus: string) => {
+    if (updatingOrderId) return
+    const nextStatus = currentStatus === "PENDING" ? "SERVED" : "PENDING"
+    setUpdatingOrderId(orderId)
+    try {
+      const res = await updateOrderStatusAction(orderId, nextStatus)
+      if (res.success) {
+        toast.success(res.message)
+      } else {
+        toast.error(res.message)
+      }
+    } catch {
+      toast.error("Failed to update status")
+    } finally {
+      setUpdatingOrderId(null)
+    }
+  }
+
+  // Real-time live timer logic (Frontend only, no polling!)
+  useEffect(() => {
+    const calculateElapsed = () => {
+      const now = new Date().getTime()
+      const start = new Date(session.startTime).getTime()
+      let seconds = Math.floor((now - start) / 1000)
+      const pauseSeconds = session.totalPauseDurationSeconds
+      seconds -= pauseSeconds
+      setElapsedSeconds(Math.max(0, seconds))
+    }
+
+    calculateElapsed()
+    const interval = setInterval(calculateElapsed, 1000) // Update every second live!
+    return () => clearInterval(interval)
+  }, [session.startTime, session.totalPauseDurationSeconds])
+
+  const handleEndSession = async () => {
+    setLoading(true)
+    try {
+      const res = await endSessionAction(session.id)
+      if (res.success && res.data?.invoiceId) {
+        toast.success("Session ended. Redirecting to invoice...")
+        router.push(`/invoices/${res.data.invoiceId}`)
+      } else if (res.success) {
+        toast.success(res.message)
+      } else {
+        toast.error(res.message)
+      }
+    } catch {
+      toast.error("Failed to end session")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Formatting: first 60 mins is countdown, after that is count up (overtime)
+  const isCountdown = elapsedSeconds < 3600
+  let displayMins = 0
+  let displaySecs = 0
+  let isOvertime = false
+
+  if (isCountdown) {
+    const remainingSeconds = 3600 - elapsedSeconds
+    displayMins = Math.floor(remainingSeconds / 60)
+    displaySecs = remainingSeconds % 60
+  } else {
+    const overtimeSeconds = elapsedSeconds - 3600
+    displayMins = Math.floor(overtimeSeconds / 60)
+    displaySecs = overtimeSeconds % 60
+    isOvertime = true
+  }
+
+  const pad = (num: number) => num.toString().padStart(2, "0")
+  const timerLabel = isOvertime ? "OVERTIME (+)" : "MIN. HOUR COUNTDOWN (-)"
+  const timerString = `${isOvertime ? "+" : ""}${pad(displayMins)}:${pad(displaySecs)}`
+  
+  const totalHours = Math.floor(elapsedSeconds / 3600)
+  const totalMins = Math.floor((elapsedSeconds % 3600) / 60)
+  const totalSecs = elapsedSeconds % 60
+  const totalTimeString = `Total: ${totalHours > 0 ? totalHours + "h " : ""}${totalMins}m ${totalSecs}s`
+
+  // Live estimated cost (remains based on actual elapsed minutes)
+  const elapsedMinutes = Math.floor(elapsedSeconds / 60)
+  const totalMinutes = Math.max(1, elapsedMinutes)
+  const type = session.table.tableType
+  let estimatedCost = 0
+
+  if (type.fixedRate != null && type.fixedDuration != null && type.fixedDuration > 0) {
+    if (totalMinutes <= type.fixedDuration) {
+      estimatedCost = type.fixedRate
+    } else {
+      const extraMinutes = totalMinutes - type.fixedDuration
+      const applicableHourlyRate = type.overtimeHourlyRate ?? type.hourlyRate
+      estimatedCost = type.fixedRate + (extraMinutes / 60) * applicableHourlyRate
+    }
+  } else {
+    estimatedCost = (totalMinutes / 60) * type.hourlyRate
+  }
+
+  if (estimatedCost < type.minimumCharge) {
+    estimatedCost = type.minimumCharge
+  }
+
+  const cafeTotal = session.orders?.reduce((sum, order) => sum + order.total, 0) || 0
+  const grandTotal = estimatedCost + cafeTotal
+
+  return (
+    <Card className="hover:border-border/80 transition-colors">
+      <CardContent className="p-4 space-y-3.5">
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="text-sm font-semibold text-foreground">
+              {session.table.name}
+            </p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              {session.customer?.name || "Walk-in Guest"}
+            </p>
+          </div>
+          {/* Live pulse dot */}
+          <div className="flex items-center gap-1.5">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+            </span>
+            <span className="text-[10px] font-medium text-emerald-500 uppercase tracking-wider">Live</span>
+          </div>
+        </div>
+
+        {/* Timer & Start time */}
+        <div className="flex justify-between items-end border-b border-border/40 pb-2.5">
+          <div className="space-y-0.5">
+            <span className="text-[9px] font-semibold text-muted-foreground block uppercase tracking-wider">{timerLabel}</span>
+            <span className={`text-xl font-mono font-bold tracking-tight block ${isOvertime ? "text-rose-500" : "text-emerald-500"}`}>
+              {timerString}
+            </span>
+            <span className="text-[10px] font-mono text-muted-foreground block">
+              {totalTimeString}
+            </span>
+          </div>
+          <div className="text-right">
+            <span className="text-[10px] font-medium text-muted-foreground block">STARTED AT</span>
+            <span className="text-xs font-medium text-foreground">
+              {format(new Date(session.startTime), "hh:mm a")}
+            </span>
+          </div>
+        </div>
+
+        {/* Billing Estimations */}
+        <div className="space-y-1.5 text-xs border-b border-border/40 pb-2.5">
+          <div className="flex justify-between text-muted-foreground">
+            <span>Play Charge</span>
+            <span className="font-mono text-foreground">₹{estimatedCost.toFixed(0)}</span>
+          </div>
+          {cafeTotal > 0 && (
+            <div className="flex justify-between text-muted-foreground">
+              <span>Cafe Orders</span>
+              <span className="font-mono text-foreground">₹{cafeTotal.toFixed(0)}</span>
+            </div>
+          )}
+          <div className="flex justify-between font-semibold text-foreground pt-1 border-t border-dashed border-border/30">
+            <span>Current Balance</span>
+            <span className="font-mono text-primary">₹{grandTotal.toFixed(0)}</span>
+          </div>
+        </div>
+
+        {/* Cafe Order History Summary */}
+        {session.orders && session.orders.length > 0 && (
+          <div className="space-y-1.5 max-h-[100px] overflow-y-auto pr-1">
+            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1">
+              <ShoppingBag className="h-3 w-3" />
+              Cafe items ({session.orders.flatMap(o => o.orderItems).length})
+            </p>
+            <div className="space-y-1 text-[11px]">
+              {session.orders.flatMap((order) => 
+                order.orderItems.map((item) => (
+                  <div key={item.id} className="flex justify-between items-center text-muted-foreground">
+                    <span>{item.itemNameSnapshot} (x{item.quantity})</span>
+                    <button
+                      type="button"
+                      disabled={updatingOrderId === order.id}
+                      onClick={() => handleToggleOrderStatus(order.id, order.status)}
+                      className="shrink-0 transition-opacity hover:opacity-85"
+                      title="Click to toggle status (Pending / Served)"
+                    >
+                      <Badge 
+                        variant="outline" 
+                        className={`text-[8.5px] px-1.5 py-0.5 select-none cursor-pointer font-semibold ${
+                          order.status === "PENDING" 
+                            ? "border-amber-500/30 text-amber-500 bg-amber-500/5 hover:bg-amber-500/10" 
+                            : "border-emerald-500/30 text-emerald-500 bg-emerald-500/5 hover:bg-emerald-500/10"
+                        }`}
+                      >
+                        {updatingOrderId === order.id ? "Updating…" : order.status}
+                      </Badge>
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
+        <div className="flex gap-2">
+          <Link href={`/pos?sessionId=${session.id}`} className="flex-1">
+            <Button variant="outline" size="sm" className="w-full h-8 text-xs gap-1.5">
+              Add Food
+            </Button>
+          </Link>
+          <Button
+            onClick={handleEndSession}
+            disabled={loading}
+            variant="outline"
+            size="sm"
+            className="flex-1 h-8 text-xs gap-1.5 text-destructive hover:text-destructive hover:bg-destructive/10 border-border"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="h-3 w-3 animate-spin" />
+                Ending…
+              </>
+            ) : (
+              <>
+                <Square className="h-3 w-3" />
+                End &amp; Bill
+              </>
+            )}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
