@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Outfit, JetBrains_Mono } from "next/font/google";
-import { ThemeProvider } from "next-themes";
-import { Toaster } from "sonner";
+import { ThemeProvider } from "@/components/shared/ThemeProvider";
+import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
 const fontSans = Outfit({
@@ -29,13 +29,11 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${fontSans.variable} ${fontMono.variable} font-sans h-full antialiased`}
+      className={`${fontSans.variable} ${fontMono.variable} font-sans h-full antialiased dark`}
     >
       <body className="min-h-full flex flex-col">
         <ThemeProvider
-          attribute="class"
           defaultTheme="dark"
-          enableSystem={false}
           disableTransitionOnChange
         >
           {children}
