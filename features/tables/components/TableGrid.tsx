@@ -204,9 +204,10 @@ export function TableGrid({ tables, customers, isAdmin = true }: TableGridProps)
                         </Button>
                         {activeSession && (
                           <Button
-                            onClick={() => router.push(`/pos?sessionId=${activeSession.id}`)}
-                            size="sm"
+                            onClick={() => router.push(`/cafe?sessionId=${activeSession.id}`)}
+                            title="Add food/drinks to this table"
                             variant="outline"
+                            size="sm"
                             className="flex-1 h-8 text-xs gap-1"
                           >
                             <ShoppingBag className="h-3 w-3" />

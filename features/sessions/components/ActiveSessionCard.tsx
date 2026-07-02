@@ -5,13 +5,13 @@ import { Session, Table, TableType, Customer, CustomerOrder, CustomerOrderItem }
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { endSessionAction } from "../actions/session.actions"
-import { updateOrderStatusAction } from "@/features/pos/actions/pos.actions"
+import { endSessionAction, pauseSessionAction, resumeSessionAction } from "../actions/session.actions"
+import { updateOrderStatusAction } from "@/features/cafe/actions/cafe.actions"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { format } from "date-fns"
-import { Square, Loader2, ShoppingBag } from "lucide-react"
+import { Square, Loader2, ShoppingBag, Pause, Play } from "lucide-react"
 
 export type SessionWithDetails = Session & {
   table: Table & { tableType: TableType }
@@ -50,18 +50,39 @@ export function ActiveSessionCard({ session }: ActiveSessionCardProps) {
   // Real-time live timer logic (Frontend only, no polling!)
   useEffect(() => {
     const calculateElapsed = () => {
-      const now = new Date().getTime()
+      let end = new Date().getTime()
+      if (session.status === "PAUSED" && session.lastPausedAt) {
+        end = new Date(session.lastPausedAt).getTime()
+      }
       const start = new Date(session.startTime).getTime()
-      let seconds = Math.floor((now - start) / 1000)
+      let seconds = Math.floor((end - start) / 1000)
       const pauseSeconds = session.totalPauseDurationSeconds
       seconds -= pauseSeconds
       setElapsedSeconds(Math.max(0, seconds))
     }
 
     calculateElapsed()
-    const interval = setInterval(calculateElapsed, 1000) // Update every second live!
+    const interval = setInterval(calculateElapsed, 10000) // Update every 10 seconds
     return () => clearInterval(interval)
-  }, [session.startTime, session.totalPauseDurationSeconds])
+  }, [session.startTime, session.totalPauseDurationSeconds, session.status, session.lastPausedAt])
+
+  const handleTogglePause = async () => {
+    if (loading) return
+    setLoading(true)
+    try {
+      const isPaused = session.status === "PAUSED"
+      const res = isPaused ? await resumeSessionAction(session.id) : await pauseSessionAction(session.id)
+      if (res.success) {
+        toast.success(res.message)
+      } else {
+        toast.error(res.message)
+      }
+    } catch {
+      toast.error("Failed to toggle session state")
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleEndSession = async () => {
     setLoading(true)
@@ -145,13 +166,22 @@ export function ActiveSessionCard({ session }: ActiveSessionCardProps) {
               {session.customer?.name || "Walk-in Guest"}
             </p>
           </div>
-          {/* Live pulse dot */}
+          {/* Live pulse dot or Paused dot */}
           <div className="flex items-center gap-1.5">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-            </span>
-            <span className="text-[10px] font-medium text-emerald-500 uppercase tracking-wider">Live</span>
+            {session.status === "PAUSED" ? (
+              <>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
+                <span className="text-[10px] font-medium text-amber-500 uppercase tracking-wider">Paused</span>
+              </>
+            ) : (
+              <>
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                </span>
+                <span className="text-[10px] font-medium text-emerald-500 uppercase tracking-wider">Live</span>
+              </>
+            )}
           </div>
         </div>
 
@@ -230,11 +260,34 @@ export function ActiveSessionCard({ session }: ActiveSessionCardProps) {
         )}
 
         <div className="flex gap-2">
-          <Link href={`/pos?sessionId=${session.id}`} className="flex-1">
+          <Link href={`/cafe?sessionId=${session.id}`} className="flex-1">
             <Button variant="outline" size="sm" className="w-full h-8 text-xs gap-1.5">
               Add Food
             </Button>
           </Link>
+          <Button
+            onClick={handleTogglePause}
+            disabled={loading}
+            variant="outline"
+            size="sm"
+            className={`flex-1 h-8 text-xs gap-1.5 border-border ${
+              session.status === "PAUSED" 
+                ? "text-emerald-500 hover:text-emerald-600 hover:bg-emerald-500/10" 
+                : "text-amber-500 hover:text-amber-600 hover:bg-amber-500/10"
+            }`}
+          >
+            {session.status === "PAUSED" ? (
+              <>
+                <Play className="h-3 w-3" />
+                Resume
+              </>
+            ) : (
+              <>
+                <Pause className="h-3 w-3" />
+                Pause
+              </>
+            )}
+          </Button>
           <Button
             onClick={handleEndSession}
             disabled={loading}

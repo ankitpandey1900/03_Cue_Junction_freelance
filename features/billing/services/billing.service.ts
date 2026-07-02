@@ -12,23 +12,36 @@ export type UpdateInvoiceInput = {
 
 export async function getInvoices() {
   return await prisma.invoice.findMany({
-    include: {
-      customer: true,
+    where: { isArchived: false } as any,
+    select: {
+      id: true,
+      invoiceNumber: true,
+      createdAt: true,
+      sessionTotal: true,
+      cafeTotal: true,
+      grandTotal: true,
+      status: true,
+      customer: {
+        select: { name: true, phone: true }
+      },
       session: {
-        include: {
-          table: true
+        select: {
+          table: {
+            select: { name: true }
+          }
         }
-      }
+      },
     },
     orderBy: {
       createdAt: 'desc'
-    }
+    },
+    take: 200,
   })
 }
 
 export async function getInvoice(id: string) {
-  return await prisma.invoice.findUnique({
-    where: { id },
+  return await prisma.invoice.findFirst({
+    where: { id, isArchived: false } as any,
     include: {
       customer: true,
       payments: true,
@@ -57,7 +70,7 @@ export async function addPayment(invoiceId: string, amount: number, method: stri
       include: { payments: true }
     })
     if (!invoice) throw new Error("Invoice not found")
-    
+
     // Create payment
     await tx.payment.create({
       data: {
@@ -135,8 +148,9 @@ export async function deleteInvoice(invoiceId: string) {
 
     const paidAmount = invoice.payments.reduce((sum, payment) => sum + payment.amount, 0)
 
-    await tx.invoice.delete({
+    await tx.invoice.update({
       where: { id: invoiceId },
+      data: { isArchived: true } as any
     })
 
     if (invoice.customerId && paidAmount > 0) {

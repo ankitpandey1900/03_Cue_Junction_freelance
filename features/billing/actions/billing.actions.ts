@@ -5,6 +5,7 @@ import { Invoice } from "@prisma/client"
 import * as billingService from "../services/billing.service"
 import { formatActionError } from "@/lib/errors"
 import { requireAdmin, requireSession } from "@/lib/action-auth"
+import { logActivity } from "@/features/logs/services/log.service"
 
 export type ActionResponse<T = unknown> = {
   success: boolean
@@ -18,8 +19,9 @@ export async function addPaymentAction(
   method: string
 ): Promise<ActionResponse<Invoice>> {
   try {
-    await requireSession()
+    const authSession = await requireSession()
     const updated = await billingService.addPayment(invoiceId, amount, method)
+    await logActivity(authSession.user.id, "INVOICE_PAID", "INVOICE", invoiceId, JSON.stringify({ amount, method, invoiceNumber: updated.invoiceNumber }))
     revalidatePath(`/invoices/${invoiceId}`)
     revalidatePath("/invoices")
     return {
@@ -40,8 +42,9 @@ export async function updateInvoiceStatusAction(
   status: string
 ): Promise<ActionResponse<Invoice>> {
   try {
-    await requireSession()
+    const authSession = await requireSession()
     const updated = await billingService.updateInvoiceStatus(invoiceId, status)
+    await logActivity(authSession.user.id, `INVOICE_${status}`, "INVOICE", invoiceId, JSON.stringify({ invoiceNumber: updated.invoiceNumber }))
     revalidatePath(`/invoices/${invoiceId}`)
     revalidatePath("/invoices")
     return {
@@ -62,8 +65,9 @@ export async function updateInvoiceAction(
   data: billingService.UpdateInvoiceInput
 ): Promise<ActionResponse<Invoice>> {
   try {
-    await requireSession()
+    const authSession = await requireSession()
     const updated = await billingService.updateInvoice(invoiceId, data)
+    await logActivity(authSession.user.id, "INVOICE_UPDATED", "INVOICE", invoiceId, JSON.stringify({ invoiceNumber: updated.invoiceNumber }))
     revalidatePath(`/invoices/${invoiceId}`)
     revalidatePath("/invoices")
     revalidatePath("/reports")
@@ -82,8 +86,9 @@ export async function updateInvoiceAction(
 
 export async function deleteInvoiceAction(invoiceId: string): Promise<ActionResponse<Invoice>> {
   try {
-    await requireAdmin()
+    const authSession = await requireAdmin()
     const deleted = await billingService.deleteInvoice(invoiceId)
+    await logActivity(authSession.user.id, "INVOICE_DELETED", "INVOICE", invoiceId, JSON.stringify({ invoiceNumber: deleted.invoiceNumber }))
     revalidatePath("/invoices")
     revalidatePath("/reports")
     return {

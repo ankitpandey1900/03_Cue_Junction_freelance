@@ -18,6 +18,9 @@ model User {
   emailVerified Boolean   @default(false)
   image         String?
   role          String    @default("STAFF") // "ADMIN" or "STAFF"
+  status        String    @default("ACTIVE") // "ACTIVE" or "INACTIVE"
+  lastLoginAt   DateTime?
+  lastLogoutAt  DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -71,6 +74,7 @@ model Customer {
   loyaltyPoints Int       @default(0)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+  isArchived    Boolean   @default(false)
 
   bookings      Booking[]
   sessions      Session[]
@@ -138,6 +142,7 @@ model Session {
   startTime                 DateTime      @default(now())
   endTime                   DateTime?
   totalPauseDurationSeconds Int           @default(0)
+  lastPausedAt              DateTime?
   status                    String        @default("ACTIVE") // "ACTIVE" | "PAUSED" | "COMPLETED"
   
   customer                  Customer?     @relation(fields: [customerId], references: [id])
@@ -207,6 +212,10 @@ model CustomerOrder {
   session    Session?            @relation(fields: [sessionId], references: [id])
   customer   Customer?           @relation(fields: [customerId], references: [id])
   orderItems CustomerOrderItem[]
+
+  @@index([createdAt])
+  @@index([status])
+  @@index([sessionId])
 }
 
 model CustomerOrderItem {
@@ -241,10 +250,16 @@ model Invoice {
   dueDate         DateTime?
   notes           String?
   createdAt       DateTime      @default(now())
+  isArchived      Boolean       @default(false)
   
   session         Session?      @relation(fields: [sessionId], references: [id])
   customer        Customer?     @relation(fields: [customerId], references: [id])
   payments        Payment[]
+
+  @@index([createdAt])
+  @@index([status])
+  @@index([isArchived])
+  @@index([customerId])
 }
 
 model Payment {
@@ -255,6 +270,9 @@ model Payment {
   paidAt      DateTime      @default(now())
   
   invoice     Invoice       @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([paidAt])
+  @@index([invoiceId])
 }
 
 // -----------------------------------------
@@ -270,6 +288,10 @@ model ActivityLog {
   createdAt   DateTime @default(now())
   
   user        User     @relation(fields: [userId], references: [id])
+
+  @@index([createdAt])
+  @@index([userId])
+  @@index([entityType])
 }
 
 // -----------------------------------------
@@ -288,5 +310,8 @@ model CafeSettings {
   taxRate             Float     @default(0)
   gstin               String?
   businessHours       String?
+  acceptUpi           Boolean   @default(true)
+  acceptCard          Boolean   @default(true)
+  acceptCash          Boolean   @default(true)
   updatedAt           DateTime  @updatedAt
 }

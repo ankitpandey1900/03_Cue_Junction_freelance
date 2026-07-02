@@ -1,7 +1,8 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Outfit, JetBrains_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/shared/ThemeProvider";
 import { Toaster } from "@/components/ui/sonner";
+import PWARegister from "@/components/PWARegister";
 import "./globals.css";
 
 const fontSans = Outfit({
@@ -14,10 +15,20 @@ const fontMono = JetBrains_Mono({
   subsets: ["latin"],
 });
 
+export const viewport: Viewport = {
+  themeColor: "#09090b",
+};
+
 export const metadata: Metadata = {
   title: "Cue Junction — Cafe Management",
   description:
     "Internal management system for Cue Junction Cafe — pool tables, gaming consoles, billing, and more.",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Cue Junction",
+  },
 };
 
 export default function RootLayout({
@@ -38,6 +49,7 @@ export default function RootLayout({
         >
           {children}
           <Toaster position="top-right" richColors closeButton />
+          <PWARegister />
         </ThemeProvider>
       </body>
     </html>

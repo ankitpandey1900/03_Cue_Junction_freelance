@@ -6,6 +6,7 @@ import * as customerService from "../services/customer.service"
 
 import { formatActionError } from "@/lib/errors"
 import { requireSession } from "@/lib/action-auth"
+import { logActivity } from "@/features/logs/services/log.service"
 
 export type ActionResponse<T = unknown> = {
   success: boolean
@@ -15,8 +16,9 @@ export type ActionResponse<T = unknown> = {
 }
 
 export async function createCustomerAction(data: CustomerFormValues): Promise<ActionResponse> {
+  let authSession
   try {
-    await requireSession()
+    authSession = await requireSession()
   } catch (error) {
     return { success: false, message: formatActionError(error, "Unauthorized. Please log in.") }
   }
@@ -43,6 +45,7 @@ export async function createCustomerAction(data: CustomerFormValues): Promise<Ac
 
   try {
     const customer = await customerService.createCustomer(validated.data)
+    await logActivity(authSession.user.id, "CUSTOMER_CREATED", "CUSTOMER", customer.id, JSON.stringify({ name: customer.name }))
     revalidatePath("/customers")
     return {
       success: true,
@@ -58,8 +61,9 @@ export async function createCustomerAction(data: CustomerFormValues): Promise<Ac
 }
 
 export async function updateCustomerAction(id: string, data: CustomerFormValues): Promise<ActionResponse> {
+  let authSession
   try {
-    await requireSession()
+    authSession = await requireSession()
   } catch (error) {
     return { success: false, message: formatActionError(error, "Unauthorized. Please log in.") }
   }
@@ -84,6 +88,7 @@ export async function updateCustomerAction(id: string, data: CustomerFormValues)
 
   try {
     const customer = await customerService.updateCustomer(id, validated.data)
+    await logActivity(authSession.user.id, "CUSTOMER_UPDATED", "CUSTOMER", customer.id, JSON.stringify({ name: customer.name }))
     revalidatePath("/customers")
     revalidatePath(`/customers/${id}`)
     return {
@@ -95,6 +100,31 @@ export async function updateCustomerAction(id: string, data: CustomerFormValues)
     return {
       success: false,
       message: formatActionError(error, "Failed to update customer"),
+    }
+  }
+}
+
+export async function deleteCustomerAction(id: string): Promise<ActionResponse> {
+  let authSession
+  try {
+    authSession = await requireSession()
+  } catch (error) {
+    return { success: false, message: formatActionError(error, "Unauthorized. Please log in.") }
+  }
+
+  try {
+    const customer = await customerService.archiveCustomer(id)
+    await logActivity(authSession.user.id, "CUSTOMER_DELETED", "CUSTOMER", customer.id, JSON.stringify({ name: customer.name }))
+    revalidatePath("/customers")
+    return {
+      success: true,
+      message: "Customer deleted successfully",
+      data: customer,
+    }
+  } catch (error: unknown) {
+    return {
+      success: false,
+      message: formatActionError(error, "Failed to delete customer"),
     }
   }
 }

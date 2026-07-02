@@ -1,18 +1,26 @@
-# Decision 2: How the Timer Works
+# ADR 0002: Database & Auth Strategy
 
-## The Problem
-When a customer plays PS5, we need to show a live timer on the screen. The easy way is to run a timer in the browser that updates the database every minute (saying "1 minute played", "2 minutes played").
+**Status:** Accepted
+**Date:** June 2026
 
-## The Decision
-We will **NOT** update the database every minute.
-We will only save the exact `startTime` in the database.
+## Context and Problem Statement
+I needed an authentication provider that supported role-based access control (RBAC), didn't lock me into an expensive SaaS tier, and integrated natively with my Prisma schema so I could query user data alongside my business logic.
 
-## Why the easy way is bad
-- If we have 20 tables playing, updating the database every minute for all tables is bad. It puts too much load on the database for no reason.
+## Considered Options
+1. **NextAuth.js (Auth.js)**
+2. **Supabase Auth**
+3. **Better Auth**
+4. **Clerk**
 
-## Why our way is better
-- **Fast:** We only write to the database when they Start, Pause, or End the game.
-- **Safe:** If the computer shuts down or internet goes off, the server still knows exactly when they started. When the staff turns on the computer again, the browser just checks the `startTime` and shows the exact correct time.
+## Decision Outcome
+**Chosen option: Better Auth**
 
-## How it works for Billing
-When the game ends, the backend calculates the final time itself. It does not trust the browser. This means nobody can cheat the timer.
+I started evaluating NextAuth, but its edge compatibility and session management API felt clunky for my specific needs. Clerk is incredible, but it abstracts the user data into their own database, which makes joining a `User` to an `ActivityLog` a multi-step networking headache. 
+
+I selected **Better Auth** because it is lightweight, extremely modern, and injects its tables (`user`, `session`, `account`) directly into my Prisma schema. I have full control over the database. 
+
+## Schema Isolation Decision
+A critical decision I made was keeping the Auth schema strictly isolated from the Business schema.
+- `User` strictly represents staff/admins who log into the dashboard.
+- `Customer` strictly represents the people playing pool and buying food.
+This explicitly prevents a scenario where a customer accidentally gets a dashboard session token. I also added `lastLoginAt` and `lastLogoutAt` directly via Better Auth's database hooks for strict staff auditing.

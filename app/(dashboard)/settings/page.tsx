@@ -1,10 +1,17 @@
 import { getSettings } from "@/features/settings/services/settings.service"
 import { SettingsForm } from "@/features/settings/components/SettingsForm"
+import { getStaffMembers } from "@/features/settings/services/staff.service"
+import { requireAdminPage } from "@/lib/action-auth"
 
 export const dynamic = "force-dynamic"
 
 export default async function SettingsPage() {
-  const settings = await getSettings()
+  await requireAdminPage()
+
+  const [settings, staffMembers] = await Promise.all([
+    getSettings(),
+    getStaffMembers(),
+  ])
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -17,7 +24,7 @@ export default async function SettingsPage() {
         </p>
       </div>
 
-      <SettingsForm initialData={settings} />
+      <SettingsForm initialData={settings} staffMembers={staffMembers} />
     </div>
   )
 }

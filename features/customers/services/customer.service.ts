@@ -3,62 +3,23 @@ import { CustomerFormValues } from "../schemas/customer.schema"
 import prisma from "@/lib/prisma"
 
 export async function getCustomers(): Promise<Customer[]> {
-  const customers = await prisma.customer.findMany({
-    include: {
-      invoices: {
-        include: {
-          payments: true
-        }
-      }
-    },
+  return await prisma.customer.findMany({
+    where: { isArchived: false } as any,
     orderBy: {
       updatedAt: 'desc',
     },
-  })
-
-  for (const customer of customers) {
-    const actualSpend = customer.invoices.reduce((sum, inv) => {
-      return sum + inv.payments.reduce((pSum, p) => pSum + p.amount, 0)
-    }, 0)
-
-    if (customer.totalSpend !== actualSpend) {
-      await prisma.customer.update({
-        where: { id: customer.id },
-        data: { totalSpend: actualSpend }
-      })
-      customer.totalSpend = actualSpend
-    }
-  }
-
-  return customers
+  }) as Customer[]
 }
 
 export async function getCustomerById(id: string): Promise<Customer | null> {
   const customer = await prisma.customer.findUnique({
     where: { id },
-    include: {
-      invoices: {
-        include: {
-          payments: true
-        }
-      }
-    }
   })
 
-  if (!customer) return null
+  const customerAny = customer as any
+  if (!customer || customerAny.isArchived) return null
 
-  const actualSpend = customer.invoices.reduce((sum, inv) => {
-    return sum + inv.payments.reduce((pSum, p) => pSum + p.amount, 0)
-  }, 0)
-
-  if (customer.totalSpend !== actualSpend) {
-    return await prisma.customer.update({
-      where: { id },
-      data: { totalSpend: actualSpend }
-    })
-  }
-
-  return customer
+  return customer as Customer
 }
 
 export type CustomerProfile = Prisma.CustomerGetPayload<{
@@ -106,6 +67,7 @@ export async function getCustomerProfile(id: string): Promise<CustomerProfile | 
     where: { id },
     include: {
       invoices: {
+        where: { isArchived: false } as any,
         include: {
           payments: true,
           session: {
@@ -146,60 +108,10 @@ export async function getCustomerProfile(id: string): Promise<CustomerProfile | 
     },
   })
 
-  if (!customer) return null
+  const customerAny = customer as any
+  if (!customer || customerAny.isArchived) return null
 
-  const actualSpend = customer.invoices.reduce((sum, inv) => {
-    return sum + inv.payments.reduce((paymentSum, payment) => paymentSum + payment.amount, 0)
-  }, 0)
-
-  if (customer.totalSpend !== actualSpend) {
-    return await prisma.customer.update({
-      where: { id },
-      data: { totalSpend: actualSpend },
-      include: {
-        invoices: {
-          include: {
-            payments: true,
-            session: {
-              include: {
-                table: true,
-              },
-            },
-          },
-          orderBy: { createdAt: "desc" },
-        },
-        sessions: {
-          include: {
-            table: {
-              include: {
-                tableType: true,
-              },
-            },
-            invoice: true,
-            orders: {
-              include: {
-                orderItems: true,
-              },
-            },
-          },
-          orderBy: { startTime: "desc" },
-        },
-        orders: {
-          include: {
-            orderItems: true,
-            session: {
-              include: {
-                table: true,
-              },
-            },
-          },
-          orderBy: { createdAt: "desc" },
-        },
-      },
-    })
-  }
-
-  return customer
+  return customer as unknown as CustomerProfile
 }
 
 export async function createCustomer(data: CustomerFormValues): Promise<Customer> {
@@ -233,7 +145,15 @@ export async function checkPhoneExists(phone: string, excludeId?: string): Promi
     where: {
       phone,
       ...(excludeId ? { id: { not: excludeId } } : {}),
-    },
+      isArchived: false,
+    } as any,
   })
   return !!customer
+}
+
+export async function archiveCustomer(id: string): Promise<Customer> {
+  return await prisma.customer.update({
+    where: { id },
+    data: { isArchived: true } as any,
+  })
 }

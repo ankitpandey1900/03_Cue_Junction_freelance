@@ -3,10 +3,13 @@ import { ManageAssetsClient } from "@/features/tables/components/ManageAssetsCli
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
+import { requireAdminPage } from "@/lib/action-auth"
 
 export const dynamic = "force-dynamic"
 
 export default async function ManageTablesPage() {
+  await requireAdminPage("/tables")
+
   const [tables, tableTypes] = await Promise.all([getTables(), getTableTypes()])
 
   return (

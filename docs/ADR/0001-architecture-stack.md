@@ -1,15 +1,24 @@
-# Decision 1: Choosing the Tech Stack
+# ADR 0001: Architecture Stack
 
-## What we needed
-We need to build a fast, good-looking software for a Game Zone. It has to handle live timers and bills perfectly without slowing down.
+**Status:** Accepted
+**Date:** June 2026
 
-## What we chose
-We chose **Next.js 15** with **Prisma**, **PostgreSQL**, and **shadcn/ui**.
+## Context and Problem Statement
+I needed to build a unified management system for a hybrid game zone and cafe. The system required complex state management (live session timers, active food orders) and highly reliable financial transactions. The client required it to be web-based, accessible on iPads, desktops, and phones.
 
-## Why we didn't choose other things
-- We could have used normal React with a separate Node.js backend, but that takes more time to set up and write code for both sides.
+## Considered Options
+1. **MERN Stack (React + Express + MongoDB)**
+2. **Next.js (App Router) + Prisma + PostgreSQL**
+3. **React SPA + Firebase**
 
-## Why we chose this
-- **Everything in one place:** Next.js lets us write the frontend and the database logic in the same project. This makes development faster.
-- **Good looks:** `shadcn/ui` and `Tailwind CSS` make it very easy to build a premium-looking UI that looks like modern apps like Stripe or Vercel.
-- **Types:** Because we use TypeScript everywhere, if we change a database column, the frontend will warn us if it breaks anything. This reduces bugs.
+## Decision Outcome
+**Chosen option: Next.js + Prisma + PostgreSQL**
+
+I went with the Next.js App Router. Why?
+- **Server Actions:** I eliminated the need to write and maintain a separate Express REST API. The mental overhead of typing a payload in the backend and manually casting it in the frontend is gone. 
+- **Type Safety:** Prisma tied to Postgres gives me end-to-end type safety. If I change a column in the database, the TypeScript compiler instantly flags every component that breaks.
+- **Relational Data:** I immediately discarded MongoDB/Firebase. I are dealing with Invoices, Orders, and Sessions. Trying to handle complex, ACID-compliant financial joins in a NoSQL document store is a nightmare waiting to happen. Postgres was the only sensible choice.
+
+## Consequences
+- **Positive:** Developer velocity is extremely high. The Feature-Sliced Design inside the `features/` directory keeps the codebase pristine. 
+- **Negative:** Next.js Server Components introduce a steep learning curve regarding what runs on the server vs the client. The caching layer (Router Cache, Data Cache) occasionally requires aggressive `revalidatePath` calls to ensure the UI updates immediately after a mutation.

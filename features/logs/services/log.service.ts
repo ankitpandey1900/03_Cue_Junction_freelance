@@ -4,16 +4,23 @@ import prisma from "@/lib/prisma"
 export async function getLogs(): Promise<(ActivityLog & { user: { name: string | null, email: string } })[]> {
   return await prisma.activityLog.findMany({
     orderBy: { createdAt: 'desc' },
-    include: {
+    select: {
+      id: true,
+      userId: true,
+      action: true,
+      entityType: true,
+      entityId: true,
+      metadata: true,
+      createdAt: true,
       user: {
         select: {
           name: true,
-          email: true
+          email: true,
         }
       }
     },
-    take: 100 // Limit to recent 100 logs for performance
-  })
+    take: 200
+  }) as any
 }
 
 // Helper to create a log (can be used anywhere in the app)

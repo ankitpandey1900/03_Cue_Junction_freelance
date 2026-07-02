@@ -17,7 +17,10 @@ export async function getSettings(): Promise<CafeSettings> {
         currency: "INR",
         taxRate: 0,
         gstin: "",
-        businessHours: "10:00 AM - 11:00 PM"
+        businessHours: "10:00 AM - 11:00 PM",
+        acceptUpi: true,
+        acceptCard: true,
+        acceptCash: true
       }
     })
   }
@@ -39,7 +42,10 @@ export async function updateSettings(data: CafeSettingsFormValues): Promise<Cafe
       currency: data.currency || "INR",
       taxRate: data.taxRate ?? 0,
       gstin: data.gstin || "",
-      businessHours: data.businessHours || ""
+      businessHours: data.businessHours || "",
+      acceptUpi: data.acceptUpi,
+      acceptCard: data.acceptCard,
+      acceptCash: data.acceptCash
     }
   })
 }

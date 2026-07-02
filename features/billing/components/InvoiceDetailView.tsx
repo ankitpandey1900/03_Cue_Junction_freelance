@@ -100,9 +100,10 @@ type SettingsViewModel = {
 function statusClass(status: string) {
   if (status === "PAID") return "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
   if (status === "PARTIAL") return "bg-blue-500/10 text-blue-500 border-blue-500/20"
-  if (status === "CANCELLED") return "bg-zinc-500/10 text-zinc-500 border-zinc-500/20"
+  if (status === "CANCELLED") return "bg-red-500/10 text-red-500 border-red-500/20"
   if (status === "REFUNDED") return "bg-purple-500/10 text-purple-500 border-purple-500/20"
-  return "bg-amber-500/10 text-amber-500 border-amber-500/20"
+  if (status === "UNPAID") return "bg-amber-500/10 text-amber-500 border-amber-500/20"
+  return "bg-zinc-500/10 text-zinc-500 border-zinc-500/20"
 }
 
 export function InvoiceDetailView({
@@ -485,7 +486,6 @@ export function InvoiceDetailView({
                     >
                       <option value="CASH">CASH</option>
                       <option value="UPI">UPI</option>
-                      <option value="CARD">CARD</option>
                       <option value="MIXED">MIXED</option>
                     </select>
                   </div>
@@ -538,8 +538,8 @@ export function InvoiceDetailView({
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs">Payment Method</Label>
-                    <div className="grid grid-cols-3 gap-1">
-                      {["UPI", "CASH", "CARD"].map((method) => (
+                    <div className="grid grid-cols-2 gap-1">
+                      {["UPI", "CASH"].map((method) => (
                         <Button
                           key={method}
                           type="button"

@@ -17,8 +17,9 @@ import {
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { customerSchema, CustomerFormValues } from "../schemas/customer.schema"
-import { createCustomerAction, updateCustomerAction } from "../actions/customer.actions"
+import { createCustomerAction, updateCustomerAction, deleteCustomerAction } from "../actions/customer.actions"
 import { toast } from "sonner"
+import { Trash } from "lucide-react"
 
 interface CustomerFormProps {
   initialData?: Customer
@@ -27,6 +28,7 @@ interface CustomerFormProps {
 
 export function CustomerForm({ initialData, onSuccess }: CustomerFormProps) {
   const [loading, setLoading] = useState(false)
+  const [deleteLoading, setDeleteLoading] = useState(false)
   const router = useRouter()
 
   const form = useForm<CustomerFormValues>({
@@ -59,6 +61,26 @@ export function CustomerForm({ initialData, onSuccess }: CustomerFormProps) {
       toast.error("Something went wrong.")
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!initialData) return
+    if (!confirm("Are you sure you want to delete this customer? This will hide them from the frontend but keep their invoice history intact in the database.")) return
+    
+    setDeleteLoading(true)
+    try {
+      const response = await deleteCustomerAction(initialData.id)
+      if (response.success) {
+        toast.success(response.message)
+        router.push("/customers")
+      } else {
+        toast.error(response.message)
+      }
+    } catch {
+      toast.error("Something went wrong.")
+    } finally {
+      setDeleteLoading(false)
     }
   }
 
@@ -107,9 +129,24 @@ export function CustomerForm({ initialData, onSuccess }: CustomerFormProps) {
           )}
         />
 
-        <Button type="submit" className="w-full" disabled={loading}>
-          {loading ? "Saving..." : initialData ? "Update Customer" : "Create Customer"}
-        </Button>
+        <div className="space-y-2">
+          <Button type="submit" className="w-full text-xs h-9 font-semibold" disabled={loading || deleteLoading}>
+            {loading ? "Saving..." : initialData ? "Update Customer" : "Create Customer"}
+          </Button>
+
+          {initialData && (
+            <Button
+              type="button"
+              variant="destructive"
+              className="w-full text-xs h-9 font-semibold gap-1.5"
+              disabled={loading || deleteLoading}
+              onClick={handleDelete}
+            >
+              <Trash className="h-4 w-4" />
+              {deleteLoading ? "Deleting..." : "Delete Customer"}
+            </Button>
+          )}
+        </div>
       </form>
     </Form>
   )

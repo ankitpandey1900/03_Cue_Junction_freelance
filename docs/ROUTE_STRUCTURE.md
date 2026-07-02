@@ -1,40 +1,36 @@
-# Route Structure (App Pages)
+# Route Structure (Next.js App Router)
 
-Here is how we organized the pages in Next.js App Router.
+I are heavily leveraging the Next.js 15 App Router. The goal here is to keep the URLs clean for the client while organizing the UI logically under the hood.
 
-## Page Folders
+## The `(dashboard)` Route Group
+You'll notice almost all of my routes are wrapped inside `app/(dashboard)/`. 
+By using the parenthesis syntax, Next.js ignores `(dashboard)` in the actual URL path. I did this because I wanted to wrap the entire internal application in a single unified `layout.tsx` (which contains the sidebar, navigation, and auth checks) without forcing the URL to look like `/dashboard/tables`. It just resolves to `/tables`.
 
 ```text
-/
-├── (auth)/                         # Pages where you don't need login
-│   ├── login/                      # The login page
-│   └── reset-password/             # To reset password
-├── (dashboard)/                    # Pages that require staff/admin login
-│   ├── page.tsx                    # The main dashboard with table grid
-│   ├── bookings/                   
-│   │   ├── page.tsx                # View all bookings
-│   │   └── new/                    # Create a new booking
-│   ├── cafe/                       
-│   │   ├── page.tsx                # Sell food to walk-in customers
-│   │   └── inventory/              # Add or edit menu items
-│   ├── customers/                  
-│   │   ├── page.tsx                # List of all customers
-│   │   └── [id]/                   # See history of one specific customer
-│   ├── reports/                    
-│   │   ├── page.tsx                # Sales charts
-│   │   └── export/                 # Download data to Excel
-│   ├── settings/                   
-│   │   ├── page.tsx                # Change GST, shop name, etc
-│   │   ├── staff/                  # Add or remove staff accounts
-│   │   └── activity/               # View the logs of who did what
-│   └── tables/                     
-│       ├── page.tsx                # Add or remove physical tables
-│       └── types/                  # Edit hourly prices for games
+app/
+ ├── (dashboard)/
+ │    ├── layout.tsx             # Global sidebar and requireSession() wrapper
+ │    ├── loading.tsx            # Global Suspense boundary for instantaneous route transitions
+ │    ├── page.tsx               # The main overview dashboard (Resolves to `/`)
+ │    ├── cafe/                  # Resolves to `/cafe`
+ │    │    ├── manage/           
+ │    │    │    ├── categories/  # Resolves to `/cafe/manage/categories`
+ │    │    │    └── items/       # Resolves to `/cafe/manage/items`
+ │    │    └── page.tsx
+ │    ├── customers/             # Resolves to `/customers`
+ │    ├── invoices/              # Resolves to `/invoices`
+ │    ├── logs/                  # Resolves to `/logs` (Audit trails)
+ │    ├── sessions/              # Resolves to `/sessions` (Active tables)
+ │    ├── settings/              # Resolves to `/settings`
+ │    └── tables/                # Resolves to `/tables`
+ │
+ ├── api/
+ │    └── auth/
+ │         └── [...all]/         # Better Auth catch-all API route
+ │
+ ├── login/                      # Resolves to `/login` (Outside the dashboard layout)
+ └── globals.css
 ```
 
-## How the Layout Works
-- The pages inside `(dashboard)` have a Sidebar and a Top Header.
-- Before anyone can open these pages, Next.js will check if they are logged in. If not, they get redirected to `/login`.
-
-## Admin Only Pages
-- Only the Owner (Admin) can see pages like `settings/staff` and `reports/export`. We will check `role === ADMIN` in the code to stop Staff from opening them.
+## Security at the Edge
+Because `(dashboard)` shares a single `layout.tsx`, I enforce authentication at the layout level. If a user without a valid session tries to hit `/tables` or `/invoices`, they are immediately redirected to `/login`. This is much cleaner than writing auth checks inside every single page component.

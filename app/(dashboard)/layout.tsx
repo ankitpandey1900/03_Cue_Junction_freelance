@@ -11,12 +11,14 @@ const navItems = [
   { href: "/tables", label: "Tables", icon: "TableProperties" as const },
   { href: "/sessions", label: "Sessions", icon: "Timer" as const },
   { href: "/customers", label: "Customers", icon: "Users" as const },
-  { href: "/pos", label: "Point of Sale", icon: "ShoppingCart" as const },
+  { href: "/cafe", label: "Cafe", icon: "ShoppingCart" as const },
   { href: "/invoices", label: "Invoices", icon: "Receipt" as const },
-  { href: "/reports", label: "Reports", icon: "BarChart3" as const },
-  { href: "/logs", label: "Audit Logs", icon: "ScrollText" as const },
-  { href: "/settings", label: "Settings", icon: "Settings" as const },
+  { href: "/reports", label: "Reports", icon: "BarChart3" as const, adminOnly: true },
+  { href: "/logs", label: "Audit Logs", icon: "ScrollText" as const, adminOnly: true },
+  { href: "/settings", label: "Settings", icon: "Settings" as const, adminOnly: true },
 ]
+
+import { AutoRefresh } from "@/components/AutoRefresh"
 
 export default async function DashboardLayout({
   children,
@@ -32,9 +34,12 @@ export default async function DashboardLayout({
   }
 
   const isAdmin = session.user.role === "ADMIN"
+  const visibleNavItems = navItems.filter((item) => isAdmin || !item.adminOnly)
 
   return (
     <div className="min-h-screen flex bg-background">
+      <AutoRefresh intervalMs={30000} />
+      
       {/* Desktop Sidebar */}
       <aside className="hidden lg:flex lg:w-60 lg:flex-col lg:fixed lg:inset-y-0 border-r border-border bg-sidebar z-20">
         {/* Brand */}
@@ -46,7 +51,7 @@ export default async function DashboardLayout({
         </div>
 
         {/* Navigation */}
-        <SidebarNav navItems={navItems} />
+        <SidebarNav navItems={visibleNavItems} />
 
         {/* User section */}
         <div className="border-t border-border p-3">
@@ -76,7 +81,7 @@ export default async function DashboardLayout({
         <header className="sticky top-0 z-40 flex h-14 items-center justify-between gap-4 border-b border-border bg-background/95 backdrop-blur-sm px-4 lg:hidden">
           <div className="flex items-center gap-2.5">
             <MobileSidebar
-              navItems={navItems}
+              navItems={visibleNavItems}
               userName={session.user.name || session.user.email || "User"}
               userRole={isAdmin ? "Admin" : "Staff"}
             />

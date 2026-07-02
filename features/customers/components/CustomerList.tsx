@@ -11,6 +11,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
 import { format } from "date-fns"
 import { Users, Star, Search } from "lucide-react"
@@ -22,6 +23,8 @@ interface CustomerListProps {
 
 export function CustomerList({ customers }: CustomerListProps) {
   const [searchQuery, setSearchQuery] = useState("")
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 15
   const router = useRouter()
 
   const normalizedSearch = searchQuery.toLowerCase().trim()
@@ -34,6 +37,15 @@ export function CustomerList({ customers }: CustomerListProps) {
     )
   })
 
+  const totalPages = Math.ceil(filteredCustomers.length / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const paginatedCustomers = filteredCustomers.slice(startIndex, startIndex + itemsPerPage)
+
+  const handleSearchChange = (val: string) => {
+    setSearchQuery(val)
+    setCurrentPage(1)
+  }
+
   return (
     <div className="space-y-4">
       <div className="relative w-full max-w-sm">
@@ -42,7 +54,7 @@ export function CustomerList({ customers }: CustomerListProps) {
           placeholder="Search customer name, phone or email..."
           className="pl-9 h-9 text-xs"
           value={searchQuery}
-          onChange={(event) => setSearchQuery(event.target.value)}
+          onChange={(event) => handleSearchChange(event.target.value)}
         />
       </div>
 
@@ -56,7 +68,7 @@ export function CustomerList({ customers }: CustomerListProps) {
       ) : (
         <>
           <div className="grid gap-3 md:hidden">
-            {filteredCustomers.map((customer) => (
+            {paginatedCustomers.map((customer) => (
               <button
                 key={customer.id}
                 type="button"
@@ -98,7 +110,7 @@ export function CustomerList({ customers }: CustomerListProps) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredCustomers.map((customer) => (
+                {paginatedCustomers.map((customer) => (
                   <TableRow
                     key={customer.id}
                     className="cursor-pointer hover:bg-accent/50 transition-colors"
@@ -134,6 +146,72 @@ export function CustomerList({ customers }: CustomerListProps) {
               </TableBody>
             </Table>
           </div>
+
+          {totalPages > 1 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-border/40 pt-4 px-1">
+              <p className="text-xs text-muted-foreground">
+                Showing <span className="font-medium text-foreground">{startIndex + 1}</span> to{" "}
+                <span className="font-medium text-foreground">
+                  {Math.min(startIndex + itemsPerPage, filteredCustomers.length)}
+                </span>{" "}
+                of <span className="font-medium text-foreground">{filteredCustomers.length}</span> customers
+              </p>
+              <div className="flex items-center gap-1.5">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs px-2.5 bg-background/50 border-border"
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage((prev) => prev - 1)}
+                >
+                  Previous
+                </Button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalPages }).map((_, idx) => {
+                    const pageNum = idx + 1
+                    if (
+                      totalPages <= 5 ||
+                      pageNum === 1 ||
+                      pageNum === totalPages ||
+                      Math.abs(pageNum - currentPage) <= 1
+                    ) {
+                      return (
+                        <Button
+                          key={pageNum}
+                          variant={currentPage === pageNum ? "default" : "outline"}
+                          size="sm"
+                          className="h-8 w-8 text-xs p-0 border-border"
+                          onClick={() => setCurrentPage(pageNum)}
+                        >
+                          {pageNum}
+                        </Button>
+                      )
+                    }
+                    if (
+                      (pageNum === 2 && currentPage > 3) ||
+                      (pageNum === totalPages - 1 && currentPage < totalPages - 2)
+                    ) {
+                      return (
+                        <span key={pageNum} className="text-xs text-muted-foreground px-1 select-none">
+                          ...
+                        </span>
+                      )
+                    }
+                    return null
+                  })}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs px-2.5 bg-background/50 border-border"
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage((prev) => prev + 1)}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>

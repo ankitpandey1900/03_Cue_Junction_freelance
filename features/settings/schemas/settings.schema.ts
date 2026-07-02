@@ -12,6 +12,9 @@ export const cafeSettingsSchema = z.object({
   taxRate: z.number().min(0, "Tax rate must be positive"),
   gstin: z.string().optional().nullable(),
   businessHours: z.string().optional().nullable(),
+  acceptUpi: z.boolean(),
+  acceptCard: z.boolean(),
+  acceptCash: z.boolean(),
 })
 
 export type CafeSettingsFormValues = z.infer<typeof cafeSettingsSchema>

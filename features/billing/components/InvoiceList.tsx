@@ -41,14 +41,17 @@ type InvoiceListItem = {
 function statusClass(status: string) {
   if (status === "PAID") return "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
   if (status === "PARTIAL") return "bg-blue-500/10 text-blue-500 border-blue-500/20"
-  if (status === "CANCELLED") return "bg-zinc-500/10 text-zinc-500 border-zinc-500/20"
+  if (status === "CANCELLED") return "bg-red-500/10 text-red-500 border-red-500/20"
   if (status === "REFUNDED") return "bg-purple-500/10 text-purple-500 border-purple-500/20"
-  return "bg-amber-500/10 text-amber-500 border-amber-500/20"
+  if (status === "UNPAID") return "bg-amber-500/10 text-amber-500 border-amber-500/20"
+  return "bg-zinc-500/10 text-zinc-500 border-zinc-500/20"
 }
 
 export function InvoiceList({ invoices }: { invoices: InvoiceListItem[] }) {
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("ALL")
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 15
 
   const normalizedSearch = searchQuery.toLowerCase().trim()
   const filteredInvoices = invoices.filter((invoice) => {
@@ -64,6 +67,20 @@ export function InvoiceList({ invoices }: { invoices: InvoiceListItem[] }) {
     return matchesSearch && matchesStatus
   })
 
+  const totalPages = Math.ceil(filteredInvoices.length / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const paginatedInvoices = filteredInvoices.slice(startIndex, startIndex + itemsPerPage)
+
+  const handleSearchChange = (val: string) => {
+    setSearchQuery(val)
+    setCurrentPage(1)
+  }
+
+  const handleStatusChange = (val: string | null) => {
+    setStatusFilter(val ?? "ALL")
+    setCurrentPage(1)
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
@@ -73,11 +90,11 @@ export function InvoiceList({ invoices }: { invoices: InvoiceListItem[] }) {
             placeholder="Search invoice, customer or phone..."
             className="pl-9 h-9 text-xs"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
           />
         </div>
 
-        <Select value={statusFilter} onValueChange={(val) => setStatusFilter(val ?? "ALL")}>
+        <Select value={statusFilter} onValueChange={handleStatusChange}>
           <SelectTrigger className="w-full sm:w-[150px] h-9 text-xs bg-background/50 border-border">
             <SelectValue placeholder="All Statuses" />
           </SelectTrigger>
@@ -99,7 +116,7 @@ export function InvoiceList({ invoices }: { invoices: InvoiceListItem[] }) {
             <p className="text-xs text-muted-foreground">No invoices found matching current criteria.</p>
           </div>
         ) : (
-          filteredInvoices.map((invoice) => (
+          paginatedInvoices.map((invoice) => (
             <Link
               key={invoice.id}
               href={`/invoices/${invoice.id}`}
@@ -160,7 +177,7 @@ export function InvoiceList({ invoices }: { invoices: InvoiceListItem[] }) {
                 </TableCell>
               </TableRow>
             ) : (
-              filteredInvoices.map((invoice) => (
+              paginatedInvoices.map((invoice) => (
                 <TableRow key={invoice.id} className="hover:bg-accent/50 transition-colors">
                   <TableCell className="font-mono text-xs text-foreground">
                     {formatInvoiceNumber(invoice.invoiceNumber, invoice.id)}
@@ -198,6 +215,72 @@ export function InvoiceList({ invoices }: { invoices: InvoiceListItem[] }) {
           </TableBody>
         </Table>
       </div>
+
+      {totalPages > 1 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-border/40 pt-4 px-1">
+          <p className="text-xs text-muted-foreground">
+            Showing <span className="font-medium text-foreground">{startIndex + 1}</span> to{" "}
+            <span className="font-medium text-foreground">
+              {Math.min(startIndex + itemsPerPage, filteredInvoices.length)}
+            </span>{" "}
+            of <span className="font-medium text-foreground">{filteredInvoices.length}</span> invoices
+          </p>
+          <div className="flex items-center gap-1.5">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 text-xs px-2.5 bg-background/50 border-border"
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage((prev) => prev - 1)}
+            >
+              Previous
+            </Button>
+            <div className="flex items-center gap-1">
+              {Array.from({ length: totalPages }).map((_, idx) => {
+                const pageNum = idx + 1
+                if (
+                  totalPages <= 5 ||
+                  pageNum === 1 ||
+                  pageNum === totalPages ||
+                  Math.abs(pageNum - currentPage) <= 1
+                ) {
+                  return (
+                    <Button
+                      key={pageNum}
+                      variant={currentPage === pageNum ? "default" : "outline"}
+                      size="sm"
+                      className="h-8 w-8 text-xs p-0 border-border"
+                      onClick={() => setCurrentPage(pageNum)}
+                    >
+                      {pageNum}
+                    </Button>
+                  )
+                }
+                if (
+                  (pageNum === 2 && currentPage > 3) ||
+                  (pageNum === totalPages - 1 && currentPage < totalPages - 2)
+                ) {
+                  return (
+                    <span key={pageNum} className="text-xs text-muted-foreground px-1 select-none">
+                      ...
+                    </span>
+                  )
+                }
+                return null
+              })}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 text-xs px-2.5 bg-background/50 border-border"
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage((prev) => prev + 1)}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

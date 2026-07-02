@@ -8,6 +8,15 @@ import { CustomerProfile } from "../services/customer.service"
 import { formatCurrency, formatInvoiceNumber } from "@/lib/formatters"
 import { CalendarClock, CreditCard, Receipt, Timer, Utensils } from "lucide-react"
 
+function statusClass(status: string) {
+  if (status === "PAID") return "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
+  if (status === "PARTIAL") return "bg-blue-500/10 text-blue-500 border-blue-500/20"
+  if (status === "CANCELLED") return "bg-red-500/10 text-red-500 border-red-500/20"
+  if (status === "REFUNDED") return "bg-purple-500/10 text-purple-500 border-purple-500/20"
+  if (status === "UNPAID") return "bg-amber-500/10 text-amber-500 border-amber-500/20"
+  return "bg-zinc-500/10 text-zinc-500 border-zinc-500/20"
+}
+
 export function CustomerProfileView({ customer }: { customer: CustomerProfile }) {
   const sessionOrders = customer.sessions.flatMap((session) =>
     session.orders.map((order) => ({
@@ -44,7 +53,7 @@ export function CustomerProfileView({ customer }: { customer: CustomerProfile })
         </Card>
         <Card className="bg-card/40 border-border/50">
           <CardContent className="p-4">
-            <p className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground">Open Balance</p>
+            <p className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground">Pending Dues</p>
             <p className="font-mono text-xl font-bold text-amber-500 mt-1">{formatCurrency(totalDue)}</p>
           </CardContent>
         </Card>
@@ -87,7 +96,7 @@ export function CustomerProfileView({ customer }: { customer: CustomerProfile })
                           <span className="font-mono text-sm font-semibold text-foreground">
                             {formatInvoiceNumber(invoice.invoiceNumber, invoice.id)}
                           </span>
-                          <Badge variant="secondary" className="text-[9px] font-medium">
+                          <Badge variant="secondary" className={`text-[9px] font-medium ${statusClass(invoice.status)}`}>
                             {invoice.status}
                           </Badge>
                         </div>

@@ -55,20 +55,20 @@ export async function startSession(data: StartSessionFormValues): Promise<Sessio
 
 export async function endSession(sessionId: string): Promise<{ session: Session, totalCost: number, invoiceId: string }> {
   return await prisma.$transaction(async (tx) => {
-    const session = await tx.session.findUnique({ 
+    const session = await tx.session.findUnique({
       where: { id: sessionId },
       include: { table: { include: { tableType: true } } }
     })
-    
+
     if (!session || session.status === "COMPLETED") {
       throw new Error("Session not found or already completed")
     }
 
     const endTime = new Date()
-    
+
     // Calculate total duration in minutes
     let totalMinutes = Math.floor((endTime.getTime() - session.startTime.getTime()) / (1000 * 60))
-    
+
     // Subtract paused duration (convert seconds to minutes)
     const pauseMinutes = Math.floor(session.totalPauseDurationSeconds / 60)
     totalMinutes -= pauseMinutes
@@ -158,5 +158,45 @@ export async function endSession(sessionId: string): Promise<{ session: Session,
     })
 
     return { session: updatedSession, totalCost: grandTotal, invoiceId: invoice.id }
+  })
+}
+
+export async function pauseSession(sessionId: string): Promise<Session> {
+  const session = await prisma.session.findUnique({
+    where: { id: sessionId },
+  })
+
+  if (!session || session.status !== "ACTIVE") {
+    throw new Error("Only active sessions can be paused")
+  }
+
+  return await prisma.session.update({
+    where: { id: sessionId },
+    data: {
+      status: "PAUSED",
+      lastPausedAt: new Date(),
+    }
+  })
+}
+
+export async function resumeSession(sessionId: string): Promise<Session> {
+  const session = await prisma.session.findUnique({
+    where: { id: sessionId },
+  })
+
+  if (!session || session.status !== "PAUSED" || !session.lastPausedAt) {
+    throw new Error("Only paused sessions can be resumed")
+  }
+
+  const now = new Date()
+  const pauseDurationSeconds = Math.floor((now.getTime() - session.lastPausedAt.getTime()) / 1000)
+
+  return await prisma.session.update({
+    where: { id: sessionId },
+    data: {
+      status: "ACTIVE",
+      lastPausedAt: null,
+      totalPauseDurationSeconds: session.totalPauseDurationSeconds + pauseDurationSeconds,
+    }
   })
 }

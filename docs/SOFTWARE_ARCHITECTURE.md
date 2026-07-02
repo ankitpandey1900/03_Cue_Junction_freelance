@@ -1,44 +1,44 @@
 # Software Architecture
 
-## High-Level Idea
-We are building this using Next.js 15 (App Router). The idea is to keep things very clean. We will use Next.js Server Components to fetch data and Client Components only when we need user interaction like clicks or live timers.
+## The Stack
+I went with a heavily opinionated, modern TypeScript stack to ensure type safety from the database all the way to the DOM.
 
-```mermaid
-flowchart TD
-    Client[Browser: Desktop, Tablet, Mobile]
-    NextJS[Next.js 15 App]
-    Auth[Better Auth]
-    DB[(PostgreSQL Database)]
+- **Framework:** Next.js (App Router)
+- **Language:** TypeScript (Strict mode enabled)
+- **Database:** PostgreSQL (Hosted on Supabase via IPv4 pooling)
+- **ORM:** Prisma
+- **Auth:** Better Auth
+- **Styling:** Tailwind CSS + Radix UI (shadcn/ui)
 
-    Client <-->|HTTPS| NextJS
-    NextJS <-->|Prisma| DB
-    NextJS <-->|Session Check| Auth
+## Architectural Patterns
+
+### Feature-Sliced Design (FSD)
+I explicitly avoided the traditional "everything in `components/` and `pages/`" monolith approach. As applications grow, that structure becomes an unmaintainable dumping ground. 
+
+Instead, I adopted a vertical slice architecture housed within the `features/` directory. Each domain (`cafe`, `sessions`, `billing`, `tables`) acts as its own self-contained module. 
+If you need to change how a cafe order works, you don't hunt across the entire codebase. You go to `features/cafe/` and you'll find the schemas, services, server actions, and UI components all co-located. This significantly reduces cognitive load and prevents spaghetti dependencies.
+
+```text
+features/
+  ├── cafe/
+  │   ├── actions/      # Next.js Server Actions (The Controller layer)
+  │   ├── components/   # React Client/Server components specific to the cafe
+  │   ├── schemas/      # Zod validation schemas
+  │   └── services/     # Prisma database queries (The Data layer)
+  └── sessions/
+      └── ...
 ```
 
-## How the Code is Organized (Feature-Based)
-Instead of putting all components in one folder, we keep them grouped by feature inside the `app/` folder.
+### The Data Flow (Server Actions & Services)
+I heavily utilize React Server Components (RSC) and Next.js Server Actions to eliminate the need for a traditional REST API layer.
 
-1. **UI Layer:** This is built with React, Tailwind CSS, and shadcn/ui.
-2. **Server Actions Layer:** When a form is submitted, it calls a Server Action. This acts like our API.
-3. **Business Logic Layer:** Simple TypeScript functions that do the math (like calculating bill amounts or checking if a table is free).
-4. **Database Layer:** We use Prisma to talk to PostgreSQL. The UI never talks to Prisma directly.
-5. **Validation:** We use Zod to check if the data sent by the user is correct before we save it.
+1. **Client UI:** A user interacts with a React component (e.g., clicking "Pause Session").
+2. **Server Action (`actions/`):** The component calls a Server Action. The action is responsible for:
+   - **Auth Validation:** Calling `requireSession()` or `requireAdmin()`.
+   - **Data Validation:** Parsing incoming payloads against my Zod schemas.
+   - **Error Handling:** Catching exceptions and formatting them gracefully for the client.
+3. **Service Layer (`services/`):** If validation passes, the Action delegates the heavy lifting to the Service layer. The service layer is pure Node.js/Prisma logic. It handles the complex `$transaction` blocks and raw data manipulation.
+4. **Revalidation:** Once the service returns successfully, the Action calls `revalidatePath('/sessions')` to instantly bust the Next.js router cache, seamlessly updating the client UI without a hard refresh.
 
-## How Components Talk to Each Other
-- **Server Components:** These load the data directly from Prisma and pass it down. They load fast.
-- **Client Components:** These handle the live timers, clicking buttons, and showing modals.
-- **Forms:** We use `react-hook-form` with Zod to handle inputs.
-
-## Example: Starting a Session
-1. Staff clicks the "Start Session" button on the screen.
-2. The browser calls a Next.js Server Action with the Table ID.
-3. Zod checks if the Table ID is valid.
-4. Better Auth checks if the Staff member is logged in.
-5. The Business Logic checks if the table is actually empty in the database.
-6. Prisma saves the new session in the database.
-7. Next.js refreshes the page so the table shows as "Occupied".
-
-## Timer Logic
-We don't want to kill the database by updating the timer every second.
-So, the database only stores the `startTime`.
-The browser (Client Component) just looks at the clock and shows how much time has passed.
+### The Presentation Layer
+I use `shadcn/ui` built on top of Radix UI for highly accessible, unstyled headless components that I theme via Tailwind. The dashboard is wrapped in strategic `Suspense` boundaries (`loading.tsx`), ensuring that route transitions feel instantaneous and non-blocking, maintaining a 60fps feel even when pulling heavy data from Postgres.

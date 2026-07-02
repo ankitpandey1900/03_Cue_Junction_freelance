@@ -1,11 +1,11 @@
 import { TableGrid } from "@/features/tables/components/TableGrid"
 import { getTables } from "@/features/tables/services/table.service"
-import { getCustomers } from "@/features/customers/services/customer.service"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { Settings2 } from "lucide-react"
 import { auth } from "@/lib/auth"
 import { headers } from "next/headers"
+import prisma from "@/lib/prisma"
 
 export const dynamic = "force-dynamic"
 
@@ -15,8 +15,14 @@ export default async function TablesPage() {
   })
   const isAdmin = session?.user?.role === "ADMIN"
 
-  const tables = await getTables()
-  const customers = await getCustomers()
+  const [tables, customers] = await Promise.all([
+    getTables(),
+    prisma.customer.findMany({
+      where: { isArchived: false } as any,
+      select: { id: true, name: true, phone: true, email: true, loyaltyPoints: true, totalSpend: true, isArchived: true, createdAt: true, updatedAt: true } as any,
+      orderBy: { name: 'asc' },
+    }) as any,
+  ])
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
