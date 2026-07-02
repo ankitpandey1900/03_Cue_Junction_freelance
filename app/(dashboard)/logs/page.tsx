@@ -1,43 +1,47 @@
-import { getLogs } from "@/features/logs/services/log.service"
-import { ShieldAlert } from "lucide-react"
+import { getHistoryFeed, type HistoryFilter } from "@/features/logs/services/history.service"
+import { HistoryFeed } from "@/features/logs/components/HistoryFeed"
 import { requireAdminPage } from "@/lib/action-auth"
-import { AuditLogTable } from "@/features/logs/components/AuditLogTable"
+import { ScrollText } from "lucide-react"
 
 export const dynamic = "force-dynamic"
 
-export default async function LogsPage() {
+type PageProps = {
+  searchParams: Promise<{ filter?: string; page?: string; from?: string; to?: string }>
+}
+
+export default async function LogsPage({ searchParams }: PageProps) {
   await requireAdminPage()
 
-  const logs = await getLogs()
+  const params = await searchParams
+  const filter = (params.filter ?? "week") as HistoryFilter
+  const page = Math.max(1, parseInt(params.page ?? "1", 10) || 1)
+  const from = params.from
+  const to = params.to
 
-  // Convert raw logs to feed the client AuditLogTable component
-  const logsPlain = logs.map((log) => ({
-    id: log.id,
-    userId: log.userId,
-    action: log.action,
-    entityType: log.entityType,
-    entityId: log.entityId,
-    metadata: log.metadata,
-    createdAt: log.createdAt,
-    user: {
-      name: log.user.name,
-      email: log.user.email,
-    },
-  }))
+  const result = await getHistoryFeed(page, filter, from, to)
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <div className="max-w-5xl mx-auto space-y-5">
+      {/* Page Header */}
       <div>
         <h1 className="text-lg font-semibold tracking-tight text-foreground flex items-center gap-2">
-          <ShieldAlert className="h-5 w-5 text-primary" />
-          Audit Logs
+          <ScrollText className="h-5 w-5 text-primary" />
+          Session History
         </h1>
         <p className="text-xs text-muted-foreground mt-0.5">
-          A secure feed of all system actions
+          Browse completed sessions, payments, and billing records.
         </p>
       </div>
 
-      <AuditLogTable initialLogs={logsPlain} />
+      <HistoryFeed
+        items={result.items}
+        total={result.total}
+        page={result.page}
+        totalPages={result.totalPages}
+        currentFilter={filter}
+        customFrom={from}
+        customTo={to}
+      />
     </div>
   )
 }

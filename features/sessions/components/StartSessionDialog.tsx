@@ -40,6 +40,7 @@ export function StartSessionDialog({
   const [loading, setLoading] = useState(false)
   const [customerId, setCustomerId] = useState<string>("guest")
   const [searchQuery, setSearchQuery] = useState("")
+  const [extraCharges, setExtraCharges] = useState<number>(0)
 
   const handleStart = async () => {
     setLoading(true)
@@ -47,6 +48,7 @@ export function StartSessionDialog({
       const res = await startSessionAction({
         tableId,
         customerId: customerId === "guest" ? undefined : customerId,
+        extraCharges,
       })
 
       if (res.success) {
@@ -66,6 +68,7 @@ export function StartSessionDialog({
     if (nextOpen) {
       setCustomerId("guest")
       setSearchQuery("")
+      setExtraCharges(0)
     }
     onOpenChange(nextOpen)
   }
@@ -122,6 +125,17 @@ export function StartSessionDialog({
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold">Extra Setup / Controller Charge (₹)</Label>
+            <Input
+              type="number"
+              placeholder="0"
+              value={extraCharges || ""}
+              onChange={(e) => setExtraCharges(Math.max(0, Number(e.target.value)))}
+              className="h-9 text-sm"
+            />
           </div>
         </div>
 

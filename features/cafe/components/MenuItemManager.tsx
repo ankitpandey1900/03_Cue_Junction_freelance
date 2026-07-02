@@ -158,7 +158,9 @@ export function MenuItemManager({ menuItems, categories }: MenuItemManagerProps)
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger className="bg-background/50 border-border/50">
-                            <SelectValue placeholder="Select a Category" />
+                            <SelectValue placeholder="Select a Category">
+                              {categories.find(c => c.id === field.value)?.name || null}
+                            </SelectValue>
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>

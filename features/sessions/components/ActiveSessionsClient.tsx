@@ -7,9 +7,10 @@ import { Search, Timer } from "lucide-react"
 
 interface ActiveSessionsClientProps {
   sessions: SessionWithDetails[]
+  availableTables: any[]
 }
 
-export function ActiveSessionsClient({ sessions }: ActiveSessionsClientProps) {
+export function ActiveSessionsClient({ sessions, availableTables }: ActiveSessionsClientProps) {
   const [searchQuery, setSearchQuery] = useState("")
 
   const filteredSessions = sessions.filter((session) => {
@@ -44,7 +45,7 @@ export function ActiveSessionsClient({ sessions }: ActiveSessionsClientProps) {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
           {filteredSessions.map((session) => (
-            <ActiveSessionCard key={session.id} session={session} />
+            <ActiveSessionCard key={session.id} session={session} availableTables={availableTables} />
           ))}
         </div>
       )}

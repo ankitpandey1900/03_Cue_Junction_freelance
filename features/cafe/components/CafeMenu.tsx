@@ -481,11 +481,11 @@ export function CafeMenu({ menuItems, activeSessions, initialSessionId }: CafeMe
                   <Select value={selectedSessionId} onValueChange={(val) => setSelectedSessionId(val ?? "walkin")}>
                     <SelectTrigger className="h-9 text-xs bg-background/40 border-border/70 focus:ring-primary/60">
                       <SelectValue placeholder="Select target bill">
-                        {(value) => {
-                          if (value === "walkin") return "🚶 Walk-in Customer (Instant Bill)"
-                          const selected = activeSessions.find((s) => s.id === value)
-                          return selected ? `🎮 ${selected.table.name} (${selected.customer?.name || "Guest"})` : "🚶 Walk-in Customer"
-                        }}
+                        {selectedSessionId === "walkin" 
+                          ? "🚶 Walk-in Customer (Instant Bill)" 
+                          : activeSessions.find((s) => s.id === selectedSessionId) 
+                            ? `🎮 ${activeSessions.find((s) => s.id === selectedSessionId)?.table.name} (${activeSessions.find((s) => s.id === selectedSessionId)?.customer?.name || "Guest"})` 
+                            : null}
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent>

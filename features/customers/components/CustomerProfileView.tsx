@@ -102,7 +102,7 @@ export function CustomerProfileView({ customer }: { customer: CustomerProfile })
                         </div>
                         <p className="text-xs text-muted-foreground">
                           {format(new Date(invoice.createdAt), "MMM d, yyyy h:mm a")}
-                          {invoice.session?.table ? ` · ${invoice.session.table.name}` : ""}
+                          {invoice.sessions?.[0]?.table ? ` · ${invoice.sessions[0].table.name}` : ""}
                         </p>
                       </div>
                       <div className="sm:text-right">

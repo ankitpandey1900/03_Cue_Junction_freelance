@@ -42,22 +42,33 @@ export async function startSession(data: StartSessionFormValues): Promise<Sessio
     })
 
     // Create session
-    return await tx.session.create({
+    const session = await tx.session.create({
       data: {
         tableId: data.tableId,
         customerId: data.customerId ?? null,
+        bookingId: data.bookingId ?? null,
+        extraCharges: data.extraCharges || 0,
         startTime: new Date(),
         status: "ACTIVE",
       }
     })
+
+    if (data.bookingId) {
+      await tx.booking.update({
+        where: { id: data.bookingId },
+        data: { status: "COMPLETED" }
+      })
+    }
+
+    return session
   })
 }
 
-export async function endSession(sessionId: string): Promise<{ session: Session, totalCost: number, invoiceId: string }> {
+export async function endSession(sessionId: string): Promise<{ session: Session }> {
   return await prisma.$transaction(async (tx) => {
     const session = await tx.session.findUnique({
       where: { id: sessionId },
-      include: { table: { include: { tableType: true } } }
+      include: { table: true }
     })
 
     if (!session || session.status === "COMPLETED") {
@@ -65,37 +76,6 @@ export async function endSession(sessionId: string): Promise<{ session: Session,
     }
 
     const endTime = new Date()
-
-    // Calculate total duration in minutes
-    let totalMinutes = Math.floor((endTime.getTime() - session.startTime.getTime()) / (1000 * 60))
-
-    // Subtract paused duration (convert seconds to minutes)
-    const pauseMinutes = Math.floor(session.totalPauseDurationSeconds / 60)
-    totalMinutes -= pauseMinutes
-
-    // Make sure we have at least 1 minute if it started
-    if (totalMinutes < 1) totalMinutes = 1
-
-    const type = session.table.tableType
-    let cost = 0
-
-    if (type.fixedRate != null && type.fixedDuration != null && type.fixedDuration > 0) {
-      if (totalMinutes <= type.fixedDuration) {
-        cost = type.fixedRate
-      } else {
-        const extraMinutes = totalMinutes - type.fixedDuration
-        const applicableHourlyRate = type.overtimeHourlyRate ?? type.hourlyRate
-        cost = type.fixedRate + (extraMinutes / 60) * applicableHourlyRate
-      }
-    } else {
-      const hours = totalMinutes / 60
-      cost = hours * type.hourlyRate
-    }
-
-    // Apply minimum charge if enforced
-    if (cost < type.minimumCharge) {
-      cost = type.minimumCharge
-    }
 
     // Update session
     const updatedSession = await tx.session.update({
@@ -112,52 +92,57 @@ export async function endSession(sessionId: string): Promise<{ session: Session,
       data: { status: "AVAILABLE" }
     })
 
-    // Fetch all non-cancelled orders for this session. Served items are still billable.
-    const orders = await tx.customerOrder.findMany({
-      where: {
-        sessionId,
-        status: { not: "CANCELLED" }
-      },
-      include: { orderItems: true }
+    return { session: updatedSession }
+  })
+}
+
+export async function switchTable(sessionId: string, newTableId: string, extraCharges: number = 0): Promise<Session> {
+  return await prisma.$transaction(async (tx) => {
+    const currentSession = await tx.session.findUnique({
+      where: { id: sessionId },
     })
 
-    // Sum up cafe orders
-    let cafeTotal = 0
-    for (const order of orders) {
-      cafeTotal += order.total
+    if (!currentSession || currentSession.status === "COMPLETED") {
+      throw new Error("Cannot switch table for a completed session")
     }
 
-    const sessionTotal = roundMoney(cost)
-    cafeTotal = roundMoney(cafeTotal)
-    const subtotal = roundMoney(sessionTotal + cafeTotal)
-    const taxAmount = 0
-    const discountAmount = 0
-    const grandTotal = roundMoney(subtotal - discountAmount)
+    if (!currentSession.customerId) {
+      throw new Error("Only registered customers can switch tables")
+    }
 
-    // Generate Invoice
-    const invoice = await tx.invoice.create({
+    const newTable = await tx.table.findUnique({ where: { id: newTableId } })
+    if (!newTable || newTable.status !== "AVAILABLE") {
+      throw new Error("Target table is not available")
+    }
+
+    // End current session
+    await tx.session.update({
+      where: { id: sessionId },
       data: {
-        sessionId,
-        customerId: session.customerId ?? undefined,
-        sessionTotal,
-        cafeTotal,
-        grandTotal,
-        status: "UNPAID",
-        taxAmount,
-        discountAmount,
+        endTime: new Date(),
+        status: "COMPLETED",
       }
     })
-
-    // Mark billable session orders as served/completed.
-    await tx.customerOrder.updateMany({
-      where: {
-        sessionId,
-        status: { in: ["PENDING", "PREPARING", "READY"] }
-      },
-      data: { status: "SERVED" }
+    await tx.table.update({
+      where: { id: currentSession.tableId },
+      data: { status: "AVAILABLE" }
     })
 
-    return { session: updatedSession, totalCost: grandTotal, invoiceId: invoice.id }
+    // Start new session
+    await tx.table.update({
+      where: { id: newTableId },
+      data: { status: "OCCUPIED" }
+    })
+
+    return await tx.session.create({
+      data: {
+        tableId: newTableId,
+        customerId: currentSession.customerId,
+        extraCharges: extraCharges,
+        startTime: new Date(),
+        status: "ACTIVE",
+      }
+    })
   })
 }
 

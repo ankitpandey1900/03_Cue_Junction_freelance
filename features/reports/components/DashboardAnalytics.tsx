@@ -43,6 +43,18 @@ interface DashboardAnalyticsProps {
     hourlySales: { hour: string; amount: number }[]
     totalCustomers: number
     dailySales: { name: string; sessions: number; cafe: number; collected: number }[]
+    paymentsByStaff: { id: string; name: string; totalAmount: number; count: number }[]
+    paymentsList: {
+      id: string;
+      amount: number;
+      method: string;
+      paidAt: Date;
+      invoiceId: string;
+      invoiceNumber: string;
+      receivedByName: string;
+      receivedById: string | null;
+    }[]
+    gamingRevenueByTableType: { id: string; name: string; totalRevenue: number; sessionCount: number }[]
   }
 }
 
@@ -178,51 +190,66 @@ export function DashboardAnalytics({ stats }: DashboardAnalyticsProps) {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <Card className="lg:col-span-2 bg-card/40 border-border/50">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold">Collection by Hour</CardTitle>
-            <p className="text-[10px] text-muted-foreground">Actual payments received in two-hour buckets for the selected range.</p>
-          </CardHeader>
-          <CardContent className="h-[230px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={stats.hourlySales} margin={{ left: -20, right: 10, top: 10 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} opacity={0.3} />
-                <XAxis dataKey="hour" fontSize={10} stroke="var(--muted-foreground)" tickLine={false} axisLine={false} />
-                <YAxis fontSize={10} stroke="var(--muted-foreground)" tickLine={false} axisLine={false} tickFormatter={moneyTick} />
-                <Tooltip contentStyle={{ backgroundColor: "var(--card)", borderColor: "var(--border)", fontSize: "11px" }} formatter={(value) => formatCurrency(Number(value))} />
-                <Bar dataKey="amount" fill="#10b981" radius={[3, 3, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+        {/* Left Column: Staff Payments Table (takes 2 columns) */}
+        <div className="lg:col-span-2">
+          <StaffPaymentsTable paymentsList={stats.paymentsList} paymentsByStaff={stats.paymentsByStaff} />
+        </div>
 
-        <Card className="bg-card/40 border-border/50">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold">Top Cafe Items</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            {stats.topSellingItems.length === 0 ? (
-              <div className="text-center py-12 text-xs text-muted-foreground">No cafe orders in this range.</div>
-            ) : (
-              <div className="divide-y divide-border/40 text-xs">
-                {stats.topSellingItems.map((item, index) => (
-                  <div key={item.name} className="flex justify-between items-center p-3">
-                    <div className="flex items-center gap-2 min-w-0">
-                      {index === 0 && <Award className="h-4 w-4 text-yellow-500 shrink-0" />}
-                      {index === 1 && <Flame className="h-4 w-4 text-orange-500 shrink-0" />}
-                      {index > 1 && <span className="w-4 text-muted-foreground font-mono text-[10px] shrink-0">{index + 1}.</span>}
-                      <span className="font-semibold text-foreground truncate">{item.name}</span>
+        {/* Right Column: Top Cafe Items + Gaming Revenue stacked (takes 1 column) */}
+        <div className="space-y-4">
+          <Card className="bg-card/40 border-border/50">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-semibold">Top Cafe Items</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              {stats.topSellingItems.length === 0 ? (
+                <div className="text-center py-12 text-xs text-muted-foreground">No cafe orders in this range.</div>
+              ) : (
+                <div className="divide-y divide-border/40 text-xs">
+                  {stats.topSellingItems.map((item, index) => (
+                    <div key={item.name} className="flex justify-between items-center p-3">
+                      <div className="flex items-center gap-2 min-w-0">
+                        {index === 0 && <Award className="h-4 w-4 text-yellow-500 shrink-0" />}
+                        {index === 1 && <Flame className="h-4 w-4 text-orange-500 shrink-0" />}
+                        {index > 1 && <span className="w-4 text-muted-foreground font-mono text-[10px] shrink-0">{index + 1}.</span>}
+                        <span className="font-semibold text-foreground truncate">{item.name}</span>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="font-medium text-foreground">{item.qty} units</p>
+                        <p className="text-[10px] text-muted-foreground font-mono">{formatCurrency(item.total)}</p>
+                      </div>
                     </div>
-                    <div className="text-right shrink-0">
-                      <p className="font-medium text-foreground">{item.qty} units</p>
-                      <p className="text-[10px] text-muted-foreground font-mono">{formatCurrency(item.total)}</p>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="bg-card/40 border-border/50">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-semibold">Gaming Revenue by Table Type</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              {stats.gamingRevenueByTableType.length === 0 ? (
+                <div className="text-center py-12 text-xs text-muted-foreground">No gaming sessions in this range.</div>
+              ) : (
+                <div className="divide-y divide-border/40 text-xs">
+                  {stats.gamingRevenueByTableType.map((type, index) => (
+                    <div key={type.id} className="flex justify-between items-center p-3">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="font-semibold text-foreground truncate">{type.name}</span>
+                        <span className="text-[10px] text-muted-foreground">({type.sessionCount} sessions)</span>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="font-medium text-foreground">{formatCurrency(type.totalRevenue)}</p>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   )
@@ -263,5 +290,35 @@ function LegendDot({ color, label }: { color: string; label: string }) {
       <span className={`h-2 w-2 rounded-full ${color}`} />
       <span className="text-muted-foreground">{label}</span>
     </div>
+  )
+}
+
+function StaffPaymentsTable({ paymentsList, paymentsByStaff }: { paymentsList: DashboardAnalyticsProps["stats"]["paymentsList"], paymentsByStaff: DashboardAnalyticsProps["stats"]["paymentsByStaff"] }) {
+  // Use React state or just render directly
+  return (
+    <Card className="col-span-1 lg:col-span-2">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm font-semibold">Payments Received By Staff</CardTitle>
+      </CardHeader>
+      <CardContent className="p-0">
+        {paymentsByStaff.length === 0 ? (
+          <div className="text-center py-12 text-xs text-muted-foreground">No payments in this range.</div>
+        ) : (
+          <div className="divide-y divide-border/40 text-xs">
+            {paymentsByStaff.map((staff, index) => (
+              <div key={staff.id} className="flex justify-between items-center p-3">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="font-semibold text-foreground truncate">{staff.name}</span>
+                  <span className="text-[10px] text-muted-foreground">({staff.count} payments)</span>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="font-medium text-foreground">{formatCurrency(staff.totalAmount)}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   )
 }

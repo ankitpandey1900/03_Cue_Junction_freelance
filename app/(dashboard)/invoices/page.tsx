@@ -17,7 +17,7 @@ export default async function InvoicesPage() {
         </p>
       </div>
 
-      <InvoiceList invoices={invoices} />
+      <InvoiceList invoices={invoices as any} />
     </div>
   )
 }

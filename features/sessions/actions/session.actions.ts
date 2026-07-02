@@ -57,30 +57,55 @@ export async function startSessionAction(data: StartSessionFormValues): Promise<
 
 export async function endSessionAction(
   sessionId: string
-): Promise<ActionResponse<{ session: Session; totalCost: number; invoiceId: string }>> {
+): Promise<ActionResponse<{ session: Session }>> {
   try {
     const authSession = await requireSession()
-    const { session, totalCost, invoiceId } = await sessionService.endSession(sessionId)
+    const { session } = await sessionService.endSession(sessionId)
     const tableInfo = await prisma.table.findUnique({ where: { id: session.tableId } })
-    const invoiceInfo = invoiceId ? await prisma.invoice.findUnique({ where: { id: invoiceId } }) : null
     
     await logActivity(authSession.user.id, "SESSION_ENDED", "SESSION", session.id, JSON.stringify({ 
       tableName: tableInfo?.name || "Table",
-      invoiceNumber: invoiceInfo?.invoiceNumber 
     }))
     
     revalidatePath("/sessions")
     revalidatePath("/tables")
-    revalidatePath("/invoices")
     return {
       success: true,
-      message: `Session ended. Total Cost: ${formatCurrency(totalCost, 2)}`,
-      data: { session, totalCost, invoiceId },
+      message: `Session ended.`,
+      data: { session },
     }
   } catch (error: unknown) {
     return {
       success: false,
       message: formatActionError(error, "Failed to end session"),
+    }
+  }
+}
+
+export async function switchTableAction(
+  sessionId: string,
+  newTableId: string,
+  extraCharges: number = 0
+): Promise<ActionResponse<Session>> {
+  try {
+    const authSession = await requireSession()
+    const session = await sessionService.switchTable(sessionId, newTableId, extraCharges)
+    
+    await logActivity(authSession.user.id, "TABLE_SWITCHED", "SESSION", session.id, JSON.stringify({ 
+      newTableId,
+    }))
+    
+    revalidatePath("/sessions")
+    revalidatePath("/tables")
+    return {
+      success: true,
+      message: `Switched to new table successfully.`,
+      data: session,
+    }
+  } catch (error: unknown) {
+    return {
+      success: false,
+      message: formatActionError(error, "Failed to switch table"),
     }
   }
 }

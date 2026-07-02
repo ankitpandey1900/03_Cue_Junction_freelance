@@ -16,11 +16,12 @@ export type ActionResponse<T = unknown> = {
 export async function addPaymentAction(
   invoiceId: string,
   amount: number,
-  method: string
+  method: string,
+  receivedById?: string
 ): Promise<ActionResponse<Invoice>> {
   try {
     const authSession = await requireSession()
-    const updated = await billingService.addPayment(invoiceId, amount, method)
+    const updated = await billingService.addPayment(invoiceId, amount, method, receivedById || authSession.user.id)
     await logActivity(authSession.user.id, "INVOICE_PAID", "INVOICE", invoiceId, JSON.stringify({ amount, method, invoiceNumber: updated.invoiceNumber }))
     revalidatePath(`/invoices/${invoiceId}`)
     revalidatePath("/invoices")
@@ -100,6 +101,34 @@ export async function deleteInvoiceAction(invoiceId: string): Promise<ActionResp
     return {
       success: false,
       message: formatActionError(error, "Failed to delete invoice"),
+    }
+  }
+}
+
+export async function checkoutCustomerAction(
+  customerId?: string,
+  sessionId?: string
+): Promise<ActionResponse<Invoice>> {
+  try {
+    const authSession = await requireSession()
+    const invoice = await billingService.checkoutCustomer(customerId, sessionId)
+    
+    await logActivity(authSession.user.id, "CHECKOUT_COMPLETED", "INVOICE", invoice.id, JSON.stringify({ invoiceNumber: invoice.invoiceNumber }))
+    
+    revalidatePath("/invoices")
+    revalidatePath("/sessions")
+    revalidatePath("/customers")
+    revalidatePath("/tables")
+    
+    return {
+      success: true,
+      message: "Checkout successful, invoice generated.",
+      data: invoice,
+    }
+  } catch (error: unknown) {
+    return {
+      success: false,
+      message: formatActionError(error, "Failed to checkout"),
     }
   }
 }

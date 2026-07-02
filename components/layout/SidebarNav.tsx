@@ -12,6 +12,7 @@ import {
   BarChart3,
   ScrollText,
   Settings,
+  CalendarCheck,
 } from "lucide-react"
 
 const iconsMap = {
@@ -24,6 +25,7 @@ const iconsMap = {
   BarChart3,
   ScrollText,
   Settings,
+  CalendarCheck,
 } as const
 
 type IconName = keyof typeof iconsMap

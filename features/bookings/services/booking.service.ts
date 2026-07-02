@@ -1,76 +1,63 @@
-import { Booking, Prisma } from "@prisma/client"
 import prisma from "@/lib/prisma"
-import { BookingFormValues } from "../schemas/booking.schema"
+import { CreateBookingFormValues } from "../schemas/booking.schema"
 
-export type BookingWithDetails = Prisma.BookingGetPayload<{
-  include: {
-    customer: true
-    table: {
-      include: {
-        tableType: true
-      }
-    }
-  }
-}>
-
-export async function getBookings(): Promise<BookingWithDetails[]> {
+export async function getBookings() {
   return await prisma.booking.findMany({
     include: {
       customer: true,
       table: {
         include: {
-          tableType: true,
-        },
-      },
+          tableType: true
+        }
+      }
     },
     orderBy: {
-      startTime: "asc",
-    },
+      startTime: "asc"
+    }
   })
 }
 
-async function assertSlotAvailable(tableId: string, startTime: Date, endTime: Date, excludeId?: string) {
-  const overlappingBooking = await prisma.booking.findFirst({
+export async function getUpcomingBookings() {
+  return await prisma.booking.findMany({
     where: {
-      tableId,
       status: { in: ["PENDING", "CONFIRMED"] },
-      ...(excludeId ? { id: { not: excludeId } } : {}),
-      startTime: { lt: endTime },
-      endTime: { gt: startTime },
+      endTime: { gte: new Date() }
     },
+    include: {
+      customer: true,
+      table: true
+    },
+    orderBy: {
+      startTime: "asc"
+    }
   })
-
-  if (overlappingBooking) {
-    throw new Error("This table already has a booking in that time slot.")
-  }
 }
 
-export async function createBooking(data: BookingFormValues): Promise<Booking> {
-  const startTime = new Date(data.startTime)
-  const endTime = new Date(data.endTime)
-
-  await assertSlotAvailable(data.tableId, startTime, endTime)
-
+export async function createBooking(data: CreateBookingFormValues) {
   return await prisma.booking.create({
     data: {
       customerId: data.customerId,
       tableId: data.tableId,
-      startTime,
-      endTime,
-      status: "CONFIRMED",
+      startTime: new Date(data.startTime),
+      endTime: new Date(data.endTime),
+      status: data.status,
     },
+    include: {
+      customer: true,
+      table: true
+    }
   })
 }
 
-export async function updateBookingStatus(id: string, status: string): Promise<Booking> {
+export async function updateBookingStatus(id: string, status: string) {
   return await prisma.booking.update({
     where: { id },
-    data: { status },
+    data: { status }
   })
 }
 
-export async function deleteBooking(id: string): Promise<Booking> {
+export async function deleteBooking(id: string) {
   return await prisma.booking.delete({
-    where: { id },
+    where: { id }
   })
 }

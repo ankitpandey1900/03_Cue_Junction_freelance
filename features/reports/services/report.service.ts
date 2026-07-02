@@ -38,12 +38,13 @@ export async function getDashboardStats(range: ReportDateRange = getDefaultRepor
   const [invoices, payments, activeSessionsCount, tables, orderItems, totalCustomers] = await Promise.all([
     prisma.invoice.findMany({
       where: { createdAt: dateWhere, isArchived: false } as any,
-      include: { payments: true },
+      include: { payments: true, sessions: { include: { table: { include: { tableType: true } } } } } as any,
       orderBy: { createdAt: "asc" },
     }),
     prisma.payment.findMany({
       where: { paidAt: dateWhere, invoice: { isArchived: false } } as any,
       orderBy: { paidAt: "asc" },
+      include: { receivedBy: { select: { name: true, id: true } }, invoice: { select: { invoiceNumber: true, id: true } } } as any
     }),
     prisma.session.count({
       where: { status: { in: ["ACTIVE", "PAUSED"] } },
@@ -121,16 +122,96 @@ export async function getDashboardStats(range: ReportDateRange = getDefaultRepor
   })
 
   const hourlySales = Array.from({ length: 12 }, (_, index) => {
-    const hour24 = index * 2 + 8
+    const startHour = index * 2
+    const label = `${String(startHour).padStart(2, '0')}:00`
     const amount = payments
       .filter((payment) => {
         const hour = payment.paidAt.getHours()
-        return hour >= hour24 && hour < hour24 + 2
+        return hour >= startHour && hour < startHour + 2
       })
       .reduce((sum, payment) => sum + payment.amount, 0)
 
-    return { hour: `${hour24}:00`, amount }
+    return { hour: label, amount }
   })
+
+  // Group payments by staff
+  const paymentsByStaffMap = new Map<string, { id: string, name: string, totalAmount: number, count: number }>()
+  payments.forEach((p: any) => {
+    const staffId = p.receivedById || "unknown"
+    const staffName = p.receivedBy?.name || "System/Unknown"
+    if (!paymentsByStaffMap.has(staffId)) {
+      paymentsByStaffMap.set(staffId, { id: staffId, name: staffName, totalAmount: 0, count: 0 })
+    }
+    const st = paymentsByStaffMap.get(staffId)!
+    st.totalAmount += p.amount
+    st.count += 1
+  })
+  const paymentsByStaff = Array.from(paymentsByStaffMap.values()).sort((a, b) => b.totalAmount - a.totalAmount)
+
+  // Payments List
+  const paymentsList = payments.map((p: any) => ({
+    id: p.id,
+    amount: p.amount,
+    method: p.method,
+    paidAt: p.paidAt,
+    invoiceId: p.invoice?.id || p.invoiceId,
+    invoiceNumber: p.invoice?.invoiceNumber || 0,
+    receivedByName: p.receivedBy?.name || "Unknown",
+    receivedById: p.receivedById || null
+  }))
+
+  // Calculate gaming revenue by table type
+  const tableTypeRevenueMap = new Map<string, { id: string, name: string, totalRevenue: number, sessionCount: number }>()
+  
+  for (const invoice of billableInvoices) {
+    const inv = invoice as any
+    if (inv.sessions && inv.sessions.length > 0) {
+      // Re-run the cost grouping logic for the invoice's sessions to know exact cost per table type
+      const grouped = new Map<string, { tableType: any, totalMinutes: number, totalExtraCharges: number }>()
+      for (const session of inv.sessions) {
+        const typeId = session.table.tableType.id
+        const end = session.endTime ? session.endTime.getTime() : new Date().getTime()
+        let mins = Math.floor((end - session.startTime.getTime()) / 60000)
+        mins -= Math.floor(session.totalPauseDurationSeconds / 60)
+        if (mins < 1) mins = 1
+        
+        if (!grouped.has(typeId)) {
+          grouped.set(typeId, { tableType: session.table.tableType, totalMinutes: 0, totalExtraCharges: 0 })
+        }
+        const group = grouped.get(typeId)!
+        group.totalMinutes += mins
+        group.totalExtraCharges += session.extraCharges
+      }
+      
+      for (const group of grouped.values()) {
+        const type = group.tableType
+        let cost = 0
+        if (type.fixedRate != null && type.fixedDuration != null && type.fixedDuration > 0) {
+          if (group.totalMinutes <= type.fixedDuration) {
+            cost = type.fixedRate
+          } else {
+            const extraMinutes = group.totalMinutes - type.fixedDuration
+            const applicableHourlyRate = type.overtimeHourlyRate ?? type.hourlyRate
+            cost = type.fixedRate + (extraMinutes / 60) * applicableHourlyRate
+          }
+        } else {
+          cost = (group.totalMinutes / 60) * type.hourlyRate
+        }
+        if (cost < type.minimumCharge) cost = type.minimumCharge
+        
+        const finalCost = cost + group.totalExtraCharges
+        
+        if (!tableTypeRevenueMap.has(type.id)) {
+          tableTypeRevenueMap.set(type.id, { id: type.id, name: type.name, totalRevenue: 0, sessionCount: 0 })
+        }
+        const st = tableTypeRevenueMap.get(type.id)!
+        st.totalRevenue += finalCost
+        st.sessionCount += 1
+      }
+    }
+  }
+  
+  const gamingRevenueByTableType = Array.from(tableTypeRevenueMap.values()).sort((a, b) => b.totalRevenue - a.totalRevenue)
 
   return {
     range: {
@@ -160,5 +241,8 @@ export async function getDashboardStats(range: ReportDateRange = getDefaultRepor
     hourlySales,
     totalCustomers,
     dailySales,
+    paymentsByStaff,
+    paymentsList,
+    gamingRevenueByTableType,
   }
 }

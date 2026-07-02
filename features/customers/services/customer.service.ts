@@ -27,7 +27,7 @@ export type CustomerProfile = Prisma.CustomerGetPayload<{
     invoices: {
       include: {
         payments: true
-        session: {
+        sessions: {
           include: {
             table: true
           }
@@ -70,7 +70,7 @@ export async function getCustomerProfile(id: string): Promise<CustomerProfile | 
         where: { isArchived: false } as any,
         include: {
           payments: true,
-          session: {
+          sessions: {
             include: {
               table: true,
             },

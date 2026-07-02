@@ -12,7 +12,7 @@ datasource db {
 // User & Auth
 // -----------------------------------------
 model User {
-  id            String    @id @default(cuid())
+  id            String    @id @default(uuid())
   email         String    @unique
   name          String?
   emailVerified Boolean   @default(false)
@@ -27,10 +27,11 @@ model User {
   activityLogs  ActivityLog[]
   accounts      Account[]
   sessions      AuthSession[]
+  receivedPayments Payment[]
 }
 
 model Account {
-  id                    String  @id @default(cuid())
+  id                    String  @id @default(uuid())
   accountId             String
   providerId            String
   userId                String
@@ -49,7 +50,7 @@ model Account {
 }
 
 model AuthSession {
-  id        String   @id @default(cuid())
+  id        String   @id @default(uuid())
   expiresAt DateTime
   token     String   @unique
   createdAt DateTime @default(now())
@@ -66,7 +67,7 @@ model AuthSession {
 // Customer
 // -----------------------------------------
 model Customer {
-  id            String    @id @default(cuid())
+  id            String    @id @default(uuid())
   name          String
   phone         String    @unique
   email         String?
@@ -86,7 +87,7 @@ model Customer {
 // Asset Management
 // -----------------------------------------
 model TableType {
-  id            String    @id @default(cuid())
+  id            String    @id @default(uuid())
   name          String    
   hourlyRate    Float
   minimumCharge Float     @default(0)
@@ -102,7 +103,7 @@ model TableType {
 }
 
 model Table {
-  id            String      @id @default(cuid())
+  id            String      @id @default(uuid())
   tableTypeId   String
   name          String      
   status        String      @default("AVAILABLE") // "AVAILABLE" | "OCCUPIED" | "RESERVED" | "MAINTENANCE"
@@ -120,7 +121,7 @@ model Table {
 // Bookings & Sessions
 // -----------------------------------------
 model Booking {
-  id            String        @id @default(cuid())
+  id            String        @id @default(uuid())
   customerId    String
   tableId       String
   startTime     DateTime
@@ -134,14 +135,16 @@ model Booking {
 }
 
 model Session {
-  id                        String        @id @default(cuid())
+  id                        String        @id @default(uuid())
   customerId                String?
   tableId                   String
   bookingId                 String?       @unique
+  invoiceId                 String?
   type                      String        @default("POSTPAID") // "PREPAID" | "POSTPAID"
   startTime                 DateTime      @default(now())
   endTime                   DateTime?
   totalPauseDurationSeconds Int           @default(0)
+  extraCharges              Float         @default(0)
   lastPausedAt              DateTime?
   status                    String        @default("ACTIVE") // "ACTIVE" | "PAUSED" | "COMPLETED"
   
@@ -150,14 +153,15 @@ model Session {
   booking                   Booking?      @relation(fields: [bookingId], references: [id])
   
   orders                    CustomerOrder[]
-  invoice                   Invoice?
+  invoice                   Invoice?      @relation(fields: [invoiceId], references: [id])
 
   @@index([status])
+  @@index([invoiceId])
 }
 
 // -----------------------------------------
 model MenuCategory {
-  id           String     @id @default(cuid())
+  id           String     @id @default(uuid())
   name         String
   slug         String     @unique
   description  String?
@@ -170,7 +174,7 @@ model MenuCategory {
 }
 
 model MenuItem {
-  id              String              @id @default(cuid())
+  id              String              @id @default(uuid())
   categoryId      String
   sku             String              @unique
   name            String
@@ -196,9 +200,10 @@ model MenuItem {
 }
 
 model CustomerOrder {
-  id         String              @id @default(cuid())
+  id         String              @id @default(uuid())
   customerId String?
   sessionId  String?
+  invoiceId  String?
   status     String              @default("PENDING") // "PENDING" | "PREPARING" | "READY" | "SERVED" | "CANCELLED"
   subtotal   Float               @default(0)
   discount   Float               @default(0)
@@ -211,15 +216,17 @@ model CustomerOrder {
 
   session    Session?            @relation(fields: [sessionId], references: [id])
   customer   Customer?           @relation(fields: [customerId], references: [id])
+  invoice    Invoice?            @relation(fields: [invoiceId], references: [id])
   orderItems CustomerOrderItem[]
 
   @@index([createdAt])
   @@index([status])
   @@index([sessionId])
+  @@index([invoiceId])
 }
 
 model CustomerOrderItem {
-  id                 String        @id @default(cuid())
+  id                 String        @id @default(uuid())
   orderId            String
   menuItemId         String
   itemNameSnapshot   String
@@ -236,9 +243,8 @@ model CustomerOrderItem {
 // Billing
 // -----------------------------------------
 model Invoice {
-  id              String        @id @default(cuid())
+  id              String        @id @default(uuid())
   invoiceNumber   Int           @unique @default(autoincrement())
-  sessionId       String?       @unique
   customerId      String?
   sessionTotal    Float         @default(0)
   cafeTotal       Float         @default(0)
@@ -252,8 +258,9 @@ model Invoice {
   createdAt       DateTime      @default(now())
   isArchived      Boolean       @default(false)
   
-  session         Session?      @relation(fields: [sessionId], references: [id])
   customer        Customer?     @relation(fields: [customerId], references: [id])
+  sessions        Session[]
+  orders          CustomerOrder[]
   payments        Payment[]
 
   @@index([createdAt])
@@ -263,23 +270,26 @@ model Invoice {
 }
 
 model Payment {
-  id          String        @id @default(cuid())
+  id          String        @id @default(uuid())
   invoiceId   String
   amount      Float
   method      String        // "CASH" | "CARD" | "UPI"
+  receivedById String?
   paidAt      DateTime      @default(now())
   
   invoice     Invoice       @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  receivedBy  User?         @relation(fields: [receivedById], references: [id])
 
   @@index([paidAt])
   @@index([invoiceId])
+  @@index([receivedById])
 }
 
 // -----------------------------------------
 // Audit Log
 // -----------------------------------------
 model ActivityLog {
-  id          String   @id @default(cuid())
+  id          String   @id @default(uuid())
   userId      String
   action      String
   entityType  String
@@ -298,7 +308,7 @@ model ActivityLog {
 // Settings
 // -----------------------------------------
 model CafeSettings {
-  id                  String    @id @default(cuid())
+  id                  String    @id @default(uuid())
   cafeName            String    @default("Cue Junction Cafe")
   defaultHourlyRate   Float     @default(200)
   receiptFooterText   String    @default("Thank you for visiting!")

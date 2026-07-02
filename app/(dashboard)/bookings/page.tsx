@@ -1,0 +1,67 @@
+import { getBookings } from "@/features/bookings/services/booking.service"
+import { getCustomers } from "@/features/customers/services/customer.service"
+import { getTables } from "@/features/tables/services/table.service"
+import { BookingsList } from "@/features/bookings/components/BookingsList"
+import { BookingsPageClient } from "@/features/bookings/components/BookingsPageClient"
+
+export const dynamic = "force-dynamic"
+
+export default async function BookingsPage() {
+  const [bookings, customers, tables] = await Promise.all([
+    getBookings(),
+    getCustomers(),
+    getTables()
+  ])
+
+  // Process data for the views
+  const mappedBookings = bookings.map(b => ({
+    id: b.id,
+    startTime: b.startTime,
+    endTime: b.endTime,
+    status: b.status,
+    customer: {
+      id: b.customer.id,
+      name: b.customer.name,
+      phone: b.customer.phone || ""
+    },
+    table: {
+      id: b.table.id,
+      name: b.table.name,
+      tableType: {
+        name: b.table.tableType.name
+      }
+    }
+  }))
+
+  const customerList = customers.map(c => ({
+    id: c.id,
+    name: c.name,
+    phone: c.phone
+  }))
+
+  const tableList = tables.map(t => ({
+    ...t,
+    tableType: {
+      name: t.tableType.name
+    }
+  }))
+
+  return (
+    <div className="max-w-7xl mx-auto space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-lg font-semibold tracking-tight text-foreground">
+            Table Bookings
+          </h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Manage advance reservations
+          </p>
+        </div>
+        
+        <BookingsPageClient customers={customerList} tables={tableList} />
+      </div>
+
+      <BookingsList bookings={mappedBookings} />
+    </div>
+  )
+}

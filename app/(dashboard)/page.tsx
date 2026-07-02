@@ -2,6 +2,7 @@ import { getTables } from "@/features/tables/services/table.service"
 import { getActiveSessions } from "@/features/sessions/services/session.service"
 import { TableGrid } from "@/features/tables/components/TableGrid"
 import { ActiveSessionCard } from "@/features/sessions/components/ActiveSessionCard"
+import { getCustomers } from "@/features/customers/services/customer.service"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -16,9 +17,10 @@ export default async function DashboardIndex() {
   todayStart.setHours(0, 0, 0, 0)
   const dashboardTime = new Date().getTime()
 
-  const [tables, activeSessions, upcomingBookingsCount, todayPaymentsAgg, unpaidInvoicesCount, customerCount] = await Promise.all([
+  const [tables, activeSessions, customers, upcomingBookingsCount, todayPaymentsAgg, unpaidInvoicesCount, customerCount] = await Promise.all([
     getTables(),
     getActiveSessions(),
+    getCustomers(),
     prisma.booking.count({
       where: {
         startTime: { gte: new Date() },
@@ -168,7 +170,7 @@ export default async function DashboardIndex() {
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 pt-2">
         <div className="xl:col-span-2 space-y-3">
           <h2 className="text-sm font-medium text-foreground">Table Map</h2>
-          <TableGrid tables={tables} customers={[]} />
+          <TableGrid tables={tables} customers={customers} />
         </div>
         <div className="space-y-3">
           <h2 className="text-sm font-medium text-foreground">

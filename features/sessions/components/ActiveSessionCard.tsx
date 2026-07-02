@@ -5,13 +5,29 @@ import { Session, Table, TableType, Customer, CustomerOrder, CustomerOrderItem }
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { endSessionAction, pauseSessionAction, resumeSessionAction } from "../actions/session.actions"
+import { pauseSessionAction, resumeSessionAction, switchTableAction } from "../actions/session.actions"
+import { checkoutCustomerAction } from "@/features/billing/actions/billing.actions"
 import { updateOrderStatusAction } from "@/features/cafe/actions/cafe.actions"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { format } from "date-fns"
-import { Square, Loader2, ShoppingBag, Pause, Play } from "lucide-react"
+import { Square, Loader2, ShoppingBag, Pause, Play, ArrowRightLeft } from "lucide-react"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Input } from "@/components/ui/input"
 
 export type SessionWithDetails = Session & {
   table: Table & { tableType: TableType }
@@ -21,11 +37,15 @@ export type SessionWithDetails = Session & {
 
 interface ActiveSessionCardProps {
   session: SessionWithDetails
+  availableTables?: any[]
 }
 
-export function ActiveSessionCard({ session }: ActiveSessionCardProps) {
+export function ActiveSessionCard({ session, availableTables = [] }: ActiveSessionCardProps) {
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const [loading, setLoading] = useState(false)
+  const [switchDialogOpen, setSwitchDialogOpen] = useState(false)
+  const [switchTableId, setSwitchTableId] = useState("")
+  const [switchExtraCharges, setSwitchExtraCharges] = useState(0)
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null)
   const router = useRouter()
 
@@ -62,7 +82,7 @@ export function ActiveSessionCard({ session }: ActiveSessionCardProps) {
     }
 
     calculateElapsed()
-    const interval = setInterval(calculateElapsed, 10000) // Update every 10 seconds
+    const interval = setInterval(calculateElapsed, 1000) // Real-time live timer
     return () => clearInterval(interval)
   }, [session.startTime, session.totalPauseDurationSeconds, session.status, session.lastPausedAt])
 
@@ -87,17 +107,38 @@ export function ActiveSessionCard({ session }: ActiveSessionCardProps) {
   const handleEndSession = async () => {
     setLoading(true)
     try {
-      const res = await endSessionAction(session.id)
-      if (res.success && res.data?.invoiceId) {
-        toast.success("Session ended. Redirecting to invoice...")
-        router.push(`/invoices/${res.data.invoiceId}`)
-      } else if (res.success) {
-        toast.success(res.message)
+      const res = await checkoutCustomerAction(session.customerId ?? undefined, session.id)
+      if (res.success && res.data?.id) {
+        toast.success("Checkout complete. Redirecting to invoice...")
+        router.push(`/invoices/${res.data.id}`)
       } else {
         toast.error(res.message)
       }
     } catch {
-      toast.error("Failed to end session")
+      toast.error("Failed to end session and checkout")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSwitchTable = async () => {
+    if (!switchTableId) {
+      toast.error("Please select a table to switch to")
+      return
+    }
+    setLoading(true)
+    try {
+      const res = await switchTableAction(session.id, switchTableId, switchExtraCharges)
+      if (res.success) {
+        toast.success(res.message)
+        setSwitchDialogOpen(false)
+        setSwitchTableId("")
+        setSwitchExtraCharges(0)
+      } else {
+        toast.error(res.message)
+      }
+    } catch {
+      toast.error("Failed to switch table")
     } finally {
       setLoading(false)
     }
@@ -155,6 +196,7 @@ export function ActiveSessionCard({ session }: ActiveSessionCardProps) {
   const grandTotal = estimatedCost + cafeTotal
 
   return (
+    <>
     <Card className="hover:border-border/80 transition-colors">
       <CardContent className="p-4 space-y-3.5">
         <div className="flex items-start justify-between">
@@ -259,18 +301,30 @@ export function ActiveSessionCard({ session }: ActiveSessionCardProps) {
           </div>
         )}
 
-        <div className="flex gap-2">
-          <Link href={`/cafe?sessionId=${session.id}`} className="flex-1">
-            <Button variant="outline" size="sm" className="w-full h-8 text-xs gap-1.5">
+        <div className="grid grid-cols-2 gap-2">
+          <Link href={`/cafe?sessionId=${session.id}`} className="w-full">
+            <Button variant="outline" size="sm" className="w-full h-8 text-xs gap-1.5 px-2">
               Add Food
             </Button>
           </Link>
+          {session.customer && (
+            <Button
+              onClick={() => setSwitchDialogOpen(true)}
+              disabled={loading}
+              variant="outline"
+              size="sm"
+              className="w-full h-8 text-xs gap-1.5 px-2 text-blue-500 hover:text-blue-600 hover:bg-blue-500/10 border-border"
+            >
+              <ArrowRightLeft className="h-3 w-3" />
+              Switch
+            </Button>
+          )}
           <Button
             onClick={handleTogglePause}
             disabled={loading}
             variant="outline"
             size="sm"
-            className={`flex-1 h-8 text-xs gap-1.5 border-border ${
+            className={`w-full h-8 text-xs gap-1.5 border-border ${
               session.status === "PAUSED" 
                 ? "text-emerald-500 hover:text-emerald-600 hover:bg-emerald-500/10" 
                 : "text-amber-500 hover:text-amber-600 hover:bg-amber-500/10"
@@ -293,7 +347,7 @@ export function ActiveSessionCard({ session }: ActiveSessionCardProps) {
             disabled={loading}
             variant="outline"
             size="sm"
-            className="flex-1 h-8 text-xs gap-1.5 text-destructive hover:text-destructive hover:bg-destructive/10 border-border"
+            className="w-full h-8 text-xs gap-1.5 text-destructive hover:text-destructive hover:bg-destructive/10 border-border"
           >
             {loading ? (
               <>
@@ -310,5 +364,60 @@ export function ActiveSessionCard({ session }: ActiveSessionCardProps) {
         </div>
       </CardContent>
     </Card>
+
+    <Dialog open={switchDialogOpen} onOpenChange={setSwitchDialogOpen}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-lg">Switch Table</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="space-y-1.5">
+            <Label className="text-sm font-semibold">Select Target Table</Label>
+            <Select value={switchTableId} onValueChange={(val) => setSwitchTableId(val || "")}>
+              <SelectTrigger>
+                <SelectValue placeholder="Choose an available table...">
+                  {availableTables.find(t => t.id === switchTableId) 
+                    ? `${availableTables.find(t => t.id === switchTableId)?.name} (${availableTables.find(t => t.id === switchTableId)?.tableType.name})` 
+                    : null}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {availableTables.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.name} ({t.tableType.name})
+                  </SelectItem>
+                ))}
+                {availableTables.length === 0 && (
+                  <SelectItem value="none" disabled>
+                    No available tables
+                  </SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-sm font-semibold">Extra Controller / Setup Charge (₹)</Label>
+            <Input
+              type="number"
+              placeholder="0"
+              value={switchExtraCharges || ""}
+              onChange={(e) => setSwitchExtraCharges(Math.max(0, Number(e.target.value)))}
+            />
+            <p className="text-xs text-muted-foreground">
+              Only add if there is a new setup cost for the switched table.
+            </p>
+          </div>
+        </div>
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" onClick={() => setSwitchDialogOpen(false)}>
+            Cancel
+          </Button>
+          <Button onClick={handleSwitchTable} disabled={loading || !switchTableId}>
+            {loading ? "Switching..." : "Confirm Switch"}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+    </>
   )
 }

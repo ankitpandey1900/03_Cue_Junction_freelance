@@ -59,7 +59,7 @@ type InvoiceViewModel = {
     email?: string | null
   } | null
   payments: Payment[]
-  session: {
+  sessions: {
     startTime: Date | string
     endTime?: Date | string | null
     totalPauseDurationSeconds: number
@@ -70,11 +70,11 @@ type InvoiceViewModel = {
         hourlyRate: number
       }
     }
-    orders: SessionOrder[]
-  } | null
+  }[]
+  orders: SessionOrder[]
 }
 
-function formatPlayedDuration(session: InvoiceViewModel["session"], fallbackEnd: Date | string) {
+function formatPlayedDuration(session: InvoiceViewModel["sessions"][0] | null, fallbackEnd: Date | string) {
   if (!session) return "No session time recorded"
 
   const start = new Date(session.startTime).getTime()
@@ -109,14 +109,17 @@ function statusClass(status: string) {
 export function InvoiceDetailView({
   invoice: initialInvoice,
   settings,
+  staffUsers,
 }: {
   invoice: InvoiceViewModel
   settings: SettingsViewModel
+  staffUsers: { id: string; name: string | null }[]
 }) {
   const router = useRouter()
   const [invoice, setInvoice] = useState(initialInvoice)
   const [paymentAmount, setPaymentAmount] = useState<number>(0)
   const [paymentMethod, setPaymentMethod] = useState<string>("UPI")
+  const [receivedById, setReceivedById] = useState<string>("")
   const [loading, setLoading] = useState(false)
   const [editLoading, setEditLoading] = useState(false)
   const [deleteLoading, setDeleteLoading] = useState(false)
@@ -142,8 +145,9 @@ export function InvoiceDetailView({
   const paidAmount = invoice.payments.reduce((sum, payment) => sum + payment.amount, 0)
   const remainingBalance = Math.max(0, invoice.grandTotal - paidAmount)
   const subtotal = invoice.sessionTotal + invoice.cafeTotal
-  const cafeItems = invoice.session?.orders.flatMap((order) => order.orderItems) ?? []
-  const playedDuration = formatPlayedDuration(invoice.session, invoice.createdAt)
+  const primarySession = invoice.sessions?.[0] ?? null
+  const cafeItems = invoice.orders?.flatMap((order) => order.orderItems) ?? []
+  const playedDuration = formatPlayedDuration(primarySession, invoice.createdAt)
 
   const handleAddPayment = async (event: React.FormEvent) => {
     event.preventDefault()
@@ -158,7 +162,7 @@ export function InvoiceDetailView({
 
     setLoading(true)
     try {
-      const response = await addPaymentAction(invoice.id, paymentAmount, paymentMethod)
+      const response = await addPaymentAction(invoice.id, paymentAmount, paymentMethod, receivedById || undefined)
       if (response.success && response.data) {
         const updatedInvoice = response.data
         toast.success(response.message)
@@ -341,9 +345,9 @@ export function InvoiceDetailView({
                 <p className="text-muted-foreground">
                   Date: <span className="font-medium text-foreground">{format(new Date(invoice.createdAt), "MMM dd, yyyy h:mm a")}</span>
                 </p>
-                {invoice.session?.table && (
+                {primarySession?.table && (
                   <p className="text-muted-foreground">
-                    Table / Asset: <span className="font-semibold text-foreground">{invoice.session.table.name}</span>
+                    Table / Asset: <span className="font-semibold text-foreground">{primarySession.table.name}</span>
                   </p>
                 )}
               </div>
@@ -367,12 +371,12 @@ export function InvoiceDetailView({
                 Charges Summary
               </p>
 
-              {invoice.sessionTotal > 0 && invoice.session && (
+              {invoice.sessionTotal > 0 && primarySession && (
                 <div className="flex justify-between items-start text-xs pb-2.5 border-b border-border/30 gap-4">
                   <div className="space-y-0.5">
                     <p className="font-semibold text-foreground">Play Session Charge</p>
                     <p className="text-[10px] text-muted-foreground">
-                      {invoice.session.table.tableType.name} ({formatCurrency(invoice.session.table.tableType.hourlyRate)}/hr) · Played {playedDuration}
+                      {primarySession.table.tableType.name} ({formatCurrency(primarySession.table.tableType.hourlyRate)}/hr) · Played {playedDuration}
                     </p>
                   </div>
                   <span className="font-mono text-foreground font-semibold">{formatCurrency(invoice.sessionTotal, 2)}</span>
@@ -551,6 +555,19 @@ export function InvoiceDetailView({
                         </Button>
                       ))}
                     </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Received By (Staff)</Label>
+                    <select
+                      value={receivedById}
+                      onChange={(event) => setReceivedById(event.target.value)}
+                      className="w-full h-8 text-xs rounded-md border border-input bg-transparent px-3 py-1"
+                    >
+                      <option value="">Default (Me)</option>
+                      {staffUsers.map((staff) => (
+                        <option key={staff.id} value={staff.id}>{staff.name || "Unknown Staff"}</option>
+                      ))}
+                    </select>
                   </div>
                   <Button type="submit" disabled={loading} size="sm" className="w-full h-8 text-xs gap-1.5 mt-1">
                     <CreditCard className="h-3.5 w-3.5" />

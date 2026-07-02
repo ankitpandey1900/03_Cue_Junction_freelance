@@ -11,10 +11,11 @@ const navItems = [
   { href: "/tables", label: "Tables", icon: "TableProperties" as const },
   { href: "/sessions", label: "Sessions", icon: "Timer" as const },
   { href: "/customers", label: "Customers", icon: "Users" as const },
+  { href: "/bookings", label: "Bookings", icon: "CalendarCheck" as const },
   { href: "/cafe", label: "Cafe", icon: "ShoppingCart" as const },
   { href: "/invoices", label: "Invoices", icon: "Receipt" as const },
   { href: "/reports", label: "Reports", icon: "BarChart3" as const, adminOnly: true },
-  { href: "/logs", label: "Audit Logs", icon: "ScrollText" as const, adminOnly: true },
+  { href: "/logs", label: "History", icon: "ScrollText" as const, adminOnly: true },
   { href: "/settings", label: "Settings", icon: "Settings" as const, adminOnly: true },
 ]
 

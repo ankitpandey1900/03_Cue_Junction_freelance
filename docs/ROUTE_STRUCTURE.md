@@ -19,7 +19,7 @@ app/
  │    │    └── page.tsx
  │    ├── customers/             # Resolves to `/customers`
  │    ├── invoices/              # Resolves to `/invoices`
- │    ├── logs/                  # Resolves to `/logs` (Audit trails)
+ │    ├── logs/                  # Resolves to `/logs` (History & Audits)
  │    ├── sessions/              # Resolves to `/sessions` (Active tables)
  │    ├── settings/              # Resolves to `/settings`
  │    └── tables/                # Resolves to `/tables`
