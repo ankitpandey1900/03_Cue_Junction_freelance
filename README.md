@@ -78,4 +78,3 @@ Each folder houses its own:
 - `components/` - React views and components tied specifically to that feature.
 - `services/` - Direct Prisma queries and transaction hooks executing data mutations.
 
-Detailed architectural documentation, system schemas, and technical decision logs are located in the [docs/](file:///D:/Projects/Clients/03_Cue%20Junction%20Cafe/docs) folder. Please review [TECHNICAL_QA.md](file:///D:/Projects/Clients/03_Cue%20Junction%20Cafe/docs/TECHNICAL_QA.md) for 100 comprehensive questions and answers covering the major design choices of the codebase.
