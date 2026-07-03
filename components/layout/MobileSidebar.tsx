@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
+import { createPortal } from "react-dom"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
@@ -45,6 +46,7 @@ interface MobileSidebarProps {
 
 export function MobileSidebar({ navItems, userName, userRole }: MobileSidebarProps) {
   const [open, setOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
   const pathname = usePathname()
 
   // Swipe-to-close
@@ -52,6 +54,11 @@ export function MobileSidebar({ navItems, userName, userRole }: MobileSidebarPro
   const touchCurrentX = useRef<number>(0)
   const drawerRef = useRef<HTMLDivElement>(null)
   const isDragging = useRef(false)
+
+  // Handle mounting for portal
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   // Close on pathname change (navigation complete)
   useEffect(() => {
@@ -107,31 +114,20 @@ export function MobileSidebar({ navItems, userName, userRole }: MobileSidebarPro
     .toUpperCase()
     .slice(0, 2)
 
-  return (
-    <>
-      {/* Hamburger trigger — larger tap area */}
-      <button
-        className="flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors -ml-1"
-        onClick={() => setOpen(true)}
-        aria-label="Open navigation"
-      >
-        <Menu className="h-5 w-5" />
-      </button>
-
-      {/* Portal overlay — always in DOM, animated with CSS */}
+  const drawerContent = (
+    <div
+      aria-hidden={!open}
+      className={`fixed inset-0 z-50 lg:hidden transition-all duration-300 ${
+        open ? "pointer-events-auto" : "pointer-events-none"
+      }`}
+    >
+      {/* Backdrop */}
       <div
-        aria-hidden={!open}
-        className={`fixed inset-0 z-50 lg:hidden transition-all duration-300 ${
-          open ? "pointer-events-auto" : "pointer-events-none"
+        className={`absolute inset-0 bg-black/70 backdrop-blur-[3px] transition-opacity duration-300 ${
+          open ? "opacity-100" : "opacity-0"
         }`}
-      >
-        {/* Backdrop */}
-        <div
-          className={`absolute inset-0 bg-black/70 backdrop-blur-[3px] transition-opacity duration-300 ${
-            open ? "opacity-100" : "opacity-0"
-          }`}
-          onClick={() => setOpen(false)}
-        />
+        onClick={() => setOpen(false)}
+      />
 
         {/* Drawer panel */}
         <div
@@ -259,6 +255,22 @@ export function MobileSidebar({ navItems, userName, userRole }: MobileSidebarPro
           </div>
         </div>
       </div>
+  )
+
+  return (
+    <>
+      {/* Hamburger trigger — larger tap area */}
+      <button
+        className="flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors -ml-1"
+        onClick={() => setOpen(true)}
+        aria-label="Open navigation"
+      >
+        <Menu className="h-5 w-5" />
+      </button>
+
+      {/* Mount the drawer overlay directly into the document body using a Portal */}
+      {/* This prevents it from getting trapped in the header's z-index stacking context */}
+      {mounted && createPortal(drawerContent, document.body)}
     </>
   )
 }
