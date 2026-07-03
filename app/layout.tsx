@@ -3,6 +3,7 @@ import { Outfit, JetBrains_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/shared/ThemeProvider";
 import { Toaster } from "@/components/ui/sonner";
 import PWARegister from "@/components/PWARegister";
+import NextTopLoader from "nextjs-toploader";
 import "./globals.css";
 
 const fontSans = Outfit({
@@ -47,6 +48,12 @@ export default function RootLayout({
           defaultTheme="dark"
           disableTransitionOnChange
         >
+          <NextTopLoader
+            color="hsl(var(--primary))"
+            height={2}
+            showSpinner={false}
+            shadow={false}
+          />
           {children}
           <Toaster position="top-right" richColors closeButton />
           <PWARegister />
