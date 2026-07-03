@@ -44,7 +44,7 @@ import {
   Tag,
   Info,
 } from "lucide-react"
-import { useState } from "react"
+import { useState, useMemo } from "react"
 
 interface HistoryFeedProps {
   items: ActivityLogItem[]
@@ -54,6 +54,13 @@ interface HistoryFeedProps {
   currentFilter: HistoryFilter
   customFrom?: string
   customTo?: string
+}
+
+export interface EventGroup {
+  entityId: string
+  entityType: string
+  items: ActivityLogItem[]
+  latestItem: ActivityLogItem
 }
 
 const FILTERS: { value: HistoryFilter; label: string }[] = [
@@ -123,87 +130,169 @@ function entityColor(entityType: string) {
     BOOKING:  "text-amber-600 dark:text-amber-400",
     USER:     "text-rose-600 dark:text-rose-400",
     SETTINGS: "text-orange-600 dark:text-orange-400",
+    SESSION_FLOW: "text-blue-600 dark:text-blue-400",
   }
   return map[entityType] ?? "text-muted-foreground"
 }
 
-// ─── Detail Dialog ────────────────────────────────────────────────
-function DetailDialog({ item, open, onClose }: { item: ActivityLogItem; open: boolean; onClose: () => void }) {
-  const { label: actionLabel, icon: actionIcon, colorClass } = getActionMeta(item.action)
+// ─── Timeline Dialog ────────────────────────────────────────────────
+function TimelineDialog({ group, open, onClose }: { group: EventGroup | null; open: boolean; onClose: () => void }) {
+  if (!group) return null
 
-  let meta: Record<string, any> = {}
-  try { if (item.metadata) meta = JSON.parse(item.metadata) } catch { /* ignore */ }
+  const { entityType, entityId, latestItem, items } = group
+  const timelineItems = [...items].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
 
-  const metaEntries = Object.entries(meta).filter(([, v]) => v !== null && v !== undefined && v !== "")
+  // If this is a Session Flow, compute summary stats
+  const isSessionFlow = entityType === 'SESSION_FLOW'
+  const sessionStart = isSessionFlow ? timelineItems.find(i => i.action === 'SESSION_STARTED') : null
+  const sessionEnd = isSessionFlow ? timelineItems.find(i => i.action === 'SESSION_ENDED') : null
+  
+  const invoicePaidEvents = isSessionFlow ? timelineItems.filter(i => i.action === 'INVOICE_PAID') : []
+  
+  let tableName = "Unknown Table"
+  let tableType = ""
+  let totalAmountPaid = 0
+  let paymentMethods = new Set<string>()
+  let invoiceNumber = null
+  let lastReceiver = ""
+  
+  if (sessionStart) {
+    try { 
+      const m = JSON.parse(sessionStart.metadata || '{}'); 
+      if (m.tableName) tableName = m.tableName;
+      if (m.tableType) tableType = m.tableType;
+    } catch {}
+  }
+  
+  for (const event of invoicePaidEvents) {
+    try { 
+      const m = JSON.parse(event.metadata || '{}')
+      if (m.amount) totalAmountPaid += Number(m.amount)
+      if (m.method) paymentMethods.add(m.method)
+      if (m.invoiceNumber) invoiceNumber = m.invoiceNumber
+      lastReceiver = event.actorName || event.actorEmail || ""
+    } catch {}
+  }
+  
+  const hasPayments = invoicePaidEvents.length > 0
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose() }}>
-      <DialogContent className="max-w-sm w-full p-0 overflow-hidden">
+      <DialogContent className="max-w-md w-full p-0 overflow-hidden">
         <DialogHeader className="px-5 pt-5 pb-3 border-b border-border/60 bg-muted/20">
-          <DialogTitle className="flex items-center gap-2.5 text-sm">
-            <span className={`inline-flex items-center justify-center h-7 w-7 rounded-lg border ${colorClass}`}>
-              {actionIcon}
-            </span>
-            <span className="font-bold">{actionLabel}</span>
+          <DialogTitle className="flex flex-col gap-1 text-sm">
+            <span className="font-semibold text-foreground text-base">{isSessionFlow ? `Session Summary: ${tableName}` : latestItem.label}</span>
+            <div className="flex items-center gap-2 text-xs font-normal">
+              <span className={`${entityColor(entityType)}`}>
+                {isSessionFlow ? 'SESSION' : entityType}
+              </span>
+            </div>
           </DialogTitle>
         </DialogHeader>
 
-        <div className="px-5 py-4 space-y-3">
-          {/* Who */}
-          <div className="flex items-start gap-2.5 text-xs">
-            <User className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
-            <div>
-              <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Performed By</p>
-              <p className="font-semibold text-foreground mt-0.5">{item.actorName || item.actorEmail}</p>
-              {item.actorName && <p className="text-muted-foreground text-[10px]">{item.actorEmail}</p>}
-            </div>
-          </div>
-
-          {/* When */}
-          <div className="flex items-start gap-2.5 text-xs">
-            <CalendarPlus className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
-            <div>
-              <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">When</p>
-              <p suppressHydrationWarning className="font-semibold text-foreground mt-0.5">{format(new Date(item.createdAt), "dd MMM yyyy, hh:mm:ss a")}</p>
-            </div>
-          </div>
-
-          {/* Entity */}
-          <div className="flex items-start gap-2.5 text-xs">
-            <Tag className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
-            <div>
-              <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Area</p>
-              <p className={`font-semibold mt-0.5 ${entityColor(item.entityType)}`}>{item.entityType}</p>
-            </div>
-          </div>
-
-          {/* Subject */}
-          <div className="flex items-start gap-2.5 text-xs">
-            <Info className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
-            <div>
-              <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Subject</p>
-              <p className="font-semibold text-foreground mt-0.5">{item.label}</p>
-              {item.detail && <p className="text-muted-foreground text-[10px] mt-0.5">{item.detail}</p>}
-            </div>
-          </div>
-
-          {/* Raw metadata details */}
-          {metaEntries.length > 0 && (
-            <div className="rounded-lg bg-muted/30 border border-border/50 p-3 space-y-1.5">
-              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">Details</p>
-              {metaEntries.map(([k, v]) => (
-                <div key={k} className="flex items-center justify-between gap-3">
-                  <span className="text-[10px] text-muted-foreground capitalize">{k.replace(/([A-Z])/g, " $1").trim()}</span>
-                  <span className="text-[11px] font-semibold text-foreground text-right truncate max-w-[160px]">{String(v)}</span>
+        <div className="px-5 py-4 max-h-[60vh] overflow-y-auto space-y-6">
+          {/* Summary Card for Sessions */}
+          {isSessionFlow && (
+            <div className="bg-background border border-border rounded-lg p-5 space-y-5">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider mb-1">Played On</p>
+                  <p className="text-sm font-semibold text-foreground">
+                    {tableName} {tableType ? <span className="text-muted-foreground font-normal text-xs">({tableType})</span> : null}
+                  </p>
                 </div>
-              ))}
+                {invoiceNumber && (
+                  <div>
+                    <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider mb-1">Invoice</p>
+                    <p className="text-sm font-semibold text-foreground">#{invoiceNumber}</p>
+                  </div>
+                )}
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider mb-1">Started</p>
+                  <p className="text-sm font-medium text-foreground">
+                    {sessionStart ? format(new Date(sessionStart.createdAt), "hh:mm a") : 'N/A'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider mb-1">Ended</p>
+                  <p className="text-sm font-medium text-foreground">
+                    {sessionEnd ? format(new Date(sessionEnd.createdAt), "hh:mm a") : (hasPayments ? 'Checked Out' : 'Active')}
+                  </p>
+                </div>
+              </div>
+
+              {hasPayments && (
+                <div className="pt-4 border-t border-border/50">
+                  <div className="flex justify-between items-center mb-2">
+                    <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Payment Received</p>
+                    <span className="text-xs font-medium text-muted-foreground">
+                      via {Array.from(paymentMethods).join(", ") || "Unknown"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-end mt-1">
+                    <p className="text-xl font-bold text-foreground">₹{totalAmountPaid}</p>
+                    <div className="text-right">
+                      <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider mb-0.5">Received by</p>
+                      <p className="text-xs font-medium text-foreground">{lastReceiver}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
-          {/* Entity ID */}
-          <div className="flex items-center gap-2 text-[10px] text-muted-foreground/60">
-            <Hash className="h-3 w-3 shrink-0" />
-            <span className="font-mono truncate">{item.entityId}</span>
+          {/* Chronological Timeline */}
+          <div>
+            <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-5">
+              Event Timeline
+            </h4>
+            <div className="space-y-4">
+              {timelineItems.map((item, idx) => {
+                const { label: actionLabel, icon: actionIcon, colorClass } = getActionMeta(item.action)
+                
+                let meta: Record<string, any> = {}
+                try { if (item.metadata) meta = JSON.parse(item.metadata) } catch { /* ignore */ }
+                
+                // Exclude system IDs from being displayed in the timeline UI
+                const excludedKeys = ['sessionId', 'id', 'invoiceId', 'customerId', 'tableId']
+                const metaEntries = Object.entries(meta).filter(([k, v]) => 
+                  v !== null && v !== undefined && v !== "" && !excludedKeys.includes(k)
+                )
+
+                return (
+                  <div key={item.id} className="relative flex gap-3">
+                    {/* line connecting items */}
+                    {idx !== timelineItems.length - 1 && (
+                      <div className="absolute left-[13px] top-7 bottom-[-16px] w-[2px] bg-border/60" />
+                    )}
+                    <div className={`shrink-0 h-7 w-7 rounded-full border flex items-center justify-center bg-background z-10 shadow-sm ${colorClass}`}>
+                      {actionIcon}
+                    </div>
+                    <div className="flex-1 pb-3">
+                      <p className="text-xs font-bold text-foreground leading-none mb-1">{actionLabel}</p>
+                      <p className="text-[10px] text-muted-foreground font-medium">
+                        {format(new Date(item.createdAt), "dd MMM, hh:mm a")} • {item.actorName || item.actorEmail}
+                      </p>
+                      {item.detail && <p className="text-[10px] text-muted-foreground mt-1.5">{item.detail}</p>}
+                      
+                      {metaEntries.length > 0 && (
+                        <div className="mt-2 rounded-lg bg-muted/20 border border-border/40 p-2.5 space-y-1.5 shadow-sm">
+                          {metaEntries.map(([k, v]) => (
+                            <div key={k} className="flex items-center justify-between gap-3">
+                              <span className="text-[10px] font-medium text-muted-foreground capitalize">{k.replace(/([A-Z])/g, " $1").trim()}</span>
+                              <span className="text-[10px] font-bold text-foreground text-right truncate max-w-[200px]">{String(v)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
           </div>
         </div>
       </DialogContent>
@@ -215,7 +304,34 @@ function DetailDialog({ item, open, onClose }: { item: ActivityLogItem; open: bo
 export function HistoryFeed({ items, total, page, totalPages, currentFilter, customFrom, customTo }: HistoryFeedProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const [selectedItem, setSelectedItem] = useState<ActivityLogItem | null>(null)
+  const [selectedGroup, setSelectedGroup] = useState<EventGroup | null>(null)
+  
+  const groupedItems = useMemo(() => {
+    const groups: EventGroup[] = []
+    const map = new Map<string, EventGroup>()
+    
+    for (const item of items) {
+      let meta: Record<string, any> = {}
+      try { if (item.metadata) meta = JSON.parse(item.metadata) } catch {}
+      
+      const sessionId = meta.sessionId || (item.entityType === 'SESSION' ? item.entityId : null)
+      const key = sessionId ? `FLOW-${sessionId}` : item.entityId ? `${item.entityType}-${item.entityId}` : item.id
+
+      if (!map.has(key)) {
+        // We use a combined entityType if it's a FLOW
+        const group: EventGroup = { 
+          entityId: sessionId || item.entityId || item.id, 
+          entityType: sessionId ? 'SESSION_FLOW' : item.entityType, 
+          items: [], 
+          latestItem: item 
+        }
+        map.set(key, group)
+        groups.push(group)
+      }
+      map.get(key)!.items.push(item)
+    }
+    return groups
+  }, [items])
 
   function navigate(params: Record<string, string>) {
     const sp = new URLSearchParams(searchParams.toString())
@@ -296,13 +412,15 @@ export function HistoryFeed({ items, total, page, totalPages, currentFilter, cus
               </TableRow>
             </TableHeader>
             <TableBody>
-              {items.map((item) => {
+              {groupedItems.map((group) => {
+                const item = group.latestItem
+                const count = group.items.length
                 const { label: actionLabel, icon: actionIcon, colorClass } = getActionMeta(item.action)
                 return (
                   <TableRow
-                    key={item.id}
+                    key={group.entityId}
                     className="cursor-pointer hover:bg-accent/40 transition-colors border-b border-border/40 last:border-0"
-                    onClick={() => setSelectedItem(item)}
+                    onClick={() => setSelectedGroup(group)}
                   >
                     {/* Date */}
                     <TableCell className="py-2.5 hidden sm:table-cell">
@@ -316,13 +434,20 @@ export function HistoryFeed({ items, total, page, totalPages, currentFilter, cus
 
                     {/* Action badge */}
                     <TableCell className="py-2.5">
-                      <Badge
-                        variant="outline"
-                        className={`inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-0.5 border whitespace-nowrap ${colorClass}`}
-                      >
-                        {actionIcon}
-                        {actionLabel}
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge
+                          variant="outline"
+                          className={`inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-0.5 border whitespace-nowrap ${colorClass}`}
+                        >
+                          {actionIcon}
+                          {actionLabel}
+                        </Badge>
+                        {count > 1 && (
+                          <span className="text-[10px] font-medium text-muted-foreground">
+                            +{count - 1} event{count > 2 ? 's' : ''}
+                          </span>
+                        )}
+                      </div>
                       {/* On mobile show date inline */}
                       <div className="text-[10px] text-muted-foreground mt-0.5 sm:hidden">
                         {format(new Date(item.createdAt), "dd MMM, hh:mm a")}
@@ -381,8 +506,8 @@ export function HistoryFeed({ items, total, page, totalPages, currentFilter, cus
       )}
 
       {/* Detail Dialog */}
-      {selectedItem && (
-        <DetailDialog item={selectedItem} open={!!selectedItem} onClose={() => setSelectedItem(null)} />
+      {selectedGroup && (
+        <TimelineDialog group={selectedGroup} open={!!selectedGroup} onClose={() => setSelectedGroup(null)} />
       )}
     </div>
   )

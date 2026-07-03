@@ -79,6 +79,12 @@ export async function getCustomerProfile(id: string): Promise<CustomerProfile | 
         orderBy: { createdAt: "desc" },
       },
       sessions: {
+        where: {
+          OR: [
+            { invoiceId: null },
+            { invoice: { isArchived: false } }
+          ]
+        },
         include: {
           table: {
             include: {
@@ -95,6 +101,12 @@ export async function getCustomerProfile(id: string): Promise<CustomerProfile | 
         orderBy: { startTime: "desc" },
       },
       orders: {
+        where: {
+          OR: [
+            { invoiceId: null },
+            { invoice: { isArchived: false } }
+          ]
+        },
         include: {
           orderItems: true,
           session: {

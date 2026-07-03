@@ -18,9 +18,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
-import { Loader2 } from "lucide-react"
+import { Loader2, Check, ChevronsUpDown } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 // Types
 type CustomerList = Pick<Customer, "id" | "name" | "phone">
@@ -58,6 +72,7 @@ export function CreateBookingDialog({
 
   const [startTime, setStartTime] = useState(formatForInput(now))
   const [endTime, setEndTime] = useState(formatForInput(end))
+  const [openCustomer, setOpenCustomer] = useState(false)
 
   const selectedCustomer = customers.find((c) => c.id === customerId)
   const selectedTable = tables.find((t) => t.id === tableId)
@@ -81,6 +96,7 @@ export function CreateBookingDialog({
         onOpenChange(false)
         setCustomerId("")
         setTableId("")
+        setOpenCustomer(false)
       } else {
         toast.error(res.message)
       }
@@ -101,20 +117,42 @@ export function CreateBookingDialog({
         <div className="space-y-4 py-4">
           <div className="space-y-1.5">
             <Label className="text-sm font-semibold">Select Customer</Label>
-            <Select value={customerId} onValueChange={(val) => setCustomerId(val || "")}>
-              <SelectTrigger>
-                <SelectValue placeholder="Choose a customer...">
-                  {selectedCustomer ? `${selectedCustomer.name} ${selectedCustomer.phone ? `(${selectedCustomer.phone})` : ""}` : null}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {customers.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.name} {c.phone ? `(${c.phone})` : ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Popover open={openCustomer} onOpenChange={setOpenCustomer}>
+              <PopoverTrigger render={<Button variant="outline" role="combobox" className="w-full justify-between" />}>
+                {selectedCustomer
+                  ? `${selectedCustomer.name} ${selectedCustomer.phone ? `(${selectedCustomer.phone})` : ""}`
+                  : "Search or select a customer..."}
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </PopoverTrigger>
+              <PopoverContent className="w-[400px] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Search customers..." />
+                  <CommandList>
+                    <CommandEmpty>No customer found.</CommandEmpty>
+                    <CommandGroup>
+                      {customers.map((c) => (
+                        <CommandItem
+                          key={c.id}
+                          value={`${c.name} ${c.phone}`}
+                          onSelect={() => {
+                            setCustomerId(c.id)
+                            setOpenCustomer(false)
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              customerId === c.id ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          {c.name} {c.phone ? `(${c.phone})` : ""}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
 
           <div className="space-y-1.5">

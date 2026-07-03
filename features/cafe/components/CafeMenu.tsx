@@ -386,7 +386,7 @@ export function CafeMenu({ menuItems, activeSessions, initialSessionId }: CafeMe
       </div>
 
       {/* Cart & Checkout Panel */}
-      <div className="space-y-4">
+      <div className="space-y-4 order-first lg:order-last mb-4 lg:mb-0">
         <Card className="sticky top-20 bg-card/65 backdrop-blur-lg border-border/70 shadow-lg overflow-hidden">
           {/* Cart Header */}
           <div className="p-4 border-b border-border/60 bg-muted/30 flex items-center justify-between">

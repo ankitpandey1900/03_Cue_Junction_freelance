@@ -6,6 +6,7 @@ import * as billingService from "../services/billing.service"
 import { formatActionError } from "@/lib/errors"
 import { requireAdmin, requireSession } from "@/lib/action-auth"
 import { logActivity } from "@/features/logs/services/log.service"
+import prisma from "@/lib/prisma"
 
 export type ActionResponse<T = unknown> = {
   success: boolean
@@ -22,7 +23,8 @@ export async function addPaymentAction(
   try {
     const authSession = await requireSession()
     const updated = await billingService.addPayment(invoiceId, amount, method, receivedById || authSession.user.id)
-    await logActivity(authSession.user.id, "INVOICE_PAID", "INVOICE", invoiceId, JSON.stringify({ amount, method, invoiceNumber: updated.invoiceNumber }))
+    const session = await prisma.session.findFirst({ where: { invoiceId } })
+    await logActivity(authSession.user.id, "INVOICE_PAID", "INVOICE", invoiceId, JSON.stringify({ amount, method, invoiceNumber: updated.invoiceNumber, sessionId: session?.id }))
     revalidatePath(`/invoices/${invoiceId}`)
     revalidatePath("/invoices")
     return {
@@ -113,7 +115,7 @@ export async function checkoutCustomerAction(
     const authSession = await requireSession()
     const invoice = await billingService.checkoutCustomer(customerId, sessionId)
     
-    await logActivity(authSession.user.id, "CHECKOUT_COMPLETED", "INVOICE", invoice.id, JSON.stringify({ invoiceNumber: invoice.invoiceNumber }))
+    await logActivity(authSession.user.id, "CHECKOUT_COMPLETED", "INVOICE", invoice.id, JSON.stringify({ invoiceNumber: invoice.invoiceNumber, sessionId }))
     
     revalidatePath("/invoices")
     revalidatePath("/sessions")

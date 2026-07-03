@@ -77,15 +77,18 @@ export default async function DashboardLayout({
       </aside>
 
       {/* Main content */}
-      <div className="flex-1 lg:pl-60 z-10 flex flex-col min-h-screen min-w-0 overflow-x-hidden">
+      <div className="flex-1 lg:pl-60 z-10 flex flex-col min-h-screen min-w-0 overflow-x-hidden pb-16 lg:pb-0">
+        
+        {/* Mobile Navigation (Bottom Bar + Drawer) */}
+        <MobileSidebar
+          navItems={visibleNavItems}
+          userName={session.user.name || session.user.email || "User"}
+          userRole={isAdmin ? "Admin" : "Staff"}
+        />
+
         {/* Mobile header */}
         <header className="sticky top-0 z-40 flex h-14 items-center justify-between gap-4 border-b border-border bg-background/95 backdrop-blur-sm px-4 lg:hidden">
           <div className="flex items-center gap-2.5">
-            <MobileSidebar
-              navItems={visibleNavItems}
-              userName={session.user.name || session.user.email || "User"}
-              userRole={isAdmin ? "Admin" : "Staff"}
-            />
             <div className="h-6 w-6 rounded bg-primary flex items-center justify-center">
               <span className="text-[10px] font-bold text-primary-foreground">CJ</span>
             </div>

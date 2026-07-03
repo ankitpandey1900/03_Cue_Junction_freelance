@@ -174,7 +174,7 @@ export function MobileSidebar({ navItems, userName, userRole }: MobileSidebarPro
                   <Link
                     key={item.href}
                     href={item.href}
-                    onClick={() => setOpen(false)}
+                    onClick={() => setTimeout(() => setOpen(false), 100)}
                     className={`group relative flex items-center gap-3 px-3 py-3 text-[13px] font-medium rounded-lg transition-all duration-150 ${
                       isActive
                         ? "bg-primary/10 text-primary"
@@ -208,7 +208,7 @@ export function MobileSidebar({ navItems, userName, userRole }: MobileSidebarPro
                       <Link
                         key={item.href}
                         href={item.href}
-                        onClick={() => setOpen(false)}
+                        onClick={() => setTimeout(() => setOpen(false), 100)}
                         className={`group relative flex items-center gap-3 px-3 py-3 text-[13px] font-medium rounded-lg transition-all duration-150 ${
                           isActive
                             ? "bg-primary/10 text-primary"

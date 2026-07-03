@@ -1,7 +1,16 @@
 "use client"
 
-import { useState } from "react"
-import { format } from "date-fns"
+import { useState, useMemo } from "react"
+import { format, isToday, isFuture, isPast, startOfDay } from "date-fns"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import {
   Table,
@@ -17,7 +26,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { MoreHorizontal, CalendarClock, Ban, CheckCircle, Trash2, Play } from "lucide-react"
+import { MoreHorizontal, CalendarClock, Ban, CheckCircle, Trash2, Play, Search, FilterX } from "lucide-react"
 import { deleteBookingAction, updateBookingStatusAction } from "../actions/booking.actions"
 import { toast } from "sonner"
 import { BookingStartDialog } from "./BookingStartDialog"
@@ -52,6 +61,11 @@ export function BookingsList({ bookings }: { bookings: BookingViewModel[] }) {
   const [loadingId, setLoadingId] = useState<string | null>(null)
   const [startDialogBooking, setStartDialogBooking] = useState<BookingViewModel | null>(null)
 
+  // Filters
+  const [searchQuery, setSearchQuery] = useState("")
+  const [statusFilter, setStatusFilter] = useState("ALL")
+  const [dateFilter, setDateFilter] = useState("ALL")
+
   const handleStatusChange = async (id: string, status: string) => {
     setLoadingId(id)
     try {
@@ -81,6 +95,30 @@ export function BookingsList({ bookings }: { bookings: BookingViewModel[] }) {
     }
   }
 
+  const filteredBookings = useMemo(() => {
+    return bookings.filter(b => {
+      const q = searchQuery.toLowerCase()
+      const matchesSearch = b.customer.name.toLowerCase().includes(q) || b.customer.phone.includes(q)
+      
+      const matchesStatus = statusFilter === "ALL" || b.status === statusFilter
+
+      let matchesDate = true
+      const bDate = new Date(b.startTime)
+      if (dateFilter === "TODAY") matchesDate = isToday(bDate)
+      else if (dateFilter === "UPCOMING") matchesDate = isFuture(bDate)
+      else if (dateFilter === "PAST") matchesDate = isPast(bDate)
+
+      return matchesSearch && matchesStatus && matchesDate
+    })
+  }, [bookings, searchQuery, statusFilter, dateFilter])
+
+  const hasActiveFilters = searchQuery !== "" || statusFilter !== "ALL" || dateFilter !== "ALL"
+  const clearFilters = () => {
+    setSearchQuery("")
+    setStatusFilter("ALL")
+    setDateFilter("ALL")
+  }
+
   if (bookings.length === 0) {
     return (
       <div className="text-center py-12 border border-dashed rounded-lg bg-card text-muted-foreground">
@@ -92,9 +130,51 @@ export function BookingsList({ bookings }: { bookings: BookingViewModel[] }) {
 
   return (
     <>
+      <div className="flex flex-col sm:flex-row gap-3 mb-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search by customer name or phone..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9 bg-card"
+          />
+        </div>
+        <div className="flex gap-2 w-full sm:w-auto">
+          <Select value={statusFilter} onValueChange={(val) => setStatusFilter(val || "ALL")}>
+            <SelectTrigger className="w-[140px] bg-card">
+              <SelectValue placeholder="All Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All Status</SelectItem>
+              <SelectItem value="PENDING">Pending</SelectItem>
+              <SelectItem value="CONFIRMED">Confirmed</SelectItem>
+              <SelectItem value="COMPLETED">Completed</SelectItem>
+              <SelectItem value="CANCELLED">Cancelled</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={dateFilter} onValueChange={(val) => setDateFilter(val || "ALL")}>
+            <SelectTrigger className="w-[140px] bg-card">
+              <SelectValue placeholder="All Dates" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All Dates</SelectItem>
+              <SelectItem value="TODAY">Today</SelectItem>
+              <SelectItem value="UPCOMING">Upcoming</SelectItem>
+              <SelectItem value="PAST">Past</SelectItem>
+            </SelectContent>
+          </Select>
+          {hasActiveFilters && (
+            <Button variant="ghost" size="icon" onClick={clearFilters} className="shrink-0" title="Clear Filters">
+              <FilterX className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+      </div>
+
       <div className="border rounded-lg bg-card">
         <Table>
-          <TableHeader>
+           <TableHeader>
             <TableRow>
               <TableHead>Customer</TableHead>
               <TableHead>Table</TableHead>
@@ -104,8 +184,15 @@ export function BookingsList({ bookings }: { bookings: BookingViewModel[] }) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {bookings.map((b) => (
-              <TableRow key={b.id} className="group">
+            {filteredBookings.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                  No bookings match your filters.
+                </TableCell>
+              </TableRow>
+            ) : (
+              filteredBookings.map((b) => (
+                <TableRow key={b.id} className="group">
                 <TableCell>
                   <div className="font-medium text-foreground">{b.customer.name}</div>
                   <div className="text-xs text-muted-foreground">{b.customer.phone}</div>
@@ -160,7 +247,8 @@ export function BookingsList({ bookings }: { bookings: BookingViewModel[] }) {
                   </DropdownMenu>
                 </TableCell>
               </TableRow>
-            ))}
+              ))
+            )}
           </TableBody>
         </Table>
       </div>

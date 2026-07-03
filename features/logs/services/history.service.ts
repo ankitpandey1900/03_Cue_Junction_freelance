@@ -94,7 +94,7 @@ export async function getHistoryFeed(
   from?: string,
   to?: string
 ): Promise<ActivityResult> {
-  const pageSize = 20
+  const pageSize = 50
   const skip = (page - 1) * pageSize
 
   const dateRange = getDateRange(filter, from, to)

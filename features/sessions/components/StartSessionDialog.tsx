@@ -13,12 +13,20 @@ import { Button } from "@/components/ui/button"
 import { startSessionAction } from "../actions/session.actions"
 import { toast } from "sonner"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { Check, ChevronsUpDown } from "lucide-react"
+import { cn } from "@/lib/utils"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 
@@ -39,8 +47,10 @@ export function StartSessionDialog({
 }: StartSessionDialogProps) {
   const [loading, setLoading] = useState(false)
   const [customerId, setCustomerId] = useState<string>("guest")
-  const [searchQuery, setSearchQuery] = useState("")
+  const [openCustomer, setOpenCustomer] = useState(false)
   const [extraCharges, setExtraCharges] = useState<number>(0)
+
+  const selectedCustomer = customers.find((c) => c.id === customerId)
 
   const handleStart = async () => {
     setLoading(true)
@@ -67,17 +77,11 @@ export function StartSessionDialog({
   const handleOpenChange = (nextOpen: boolean) => {
     if (nextOpen) {
       setCustomerId("guest")
-      setSearchQuery("")
       setExtraCharges(0)
+      setOpenCustomer(false)
     }
     onOpenChange(nextOpen)
   }
-
-  // Filter customers by name or phone
-  const filteredCustomers = customers.filter((c) =>
-    c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    c.phone.includes(searchQuery)
-  )
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -90,41 +94,61 @@ export function StartSessionDialog({
         </DialogHeader>
 
         <div className="space-y-4 py-3">
-          {/* Lookup Input */}
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold">Search Customer (Name or Phone)</Label>
-            <Input
-              placeholder="Type name or phone number..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-9 text-sm"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label className="text-xs font-semibold">Select Customer ({filteredCustomers.length} match)</Label>
-            <Select
-              value={customerId}
-              onValueChange={(val) => setCustomerId(val || "guest")}
-            >
-              <SelectTrigger className="h-9 text-sm">
-                <SelectValue placeholder="Select a customer">
-                  {(value) => {
-                    if (value === "guest") return "Guest (No account)"
-                    const selected = customers.find((c) => c.id === value)
-                    return selected ? `${selected.name} (${selected.phone})` : "Guest (No account)"
-                  }}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="guest">Guest (No account)</SelectItem>
-                {filteredCustomers.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {`${c.name} (${c.phone})`}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label className="text-xs font-semibold">Select Customer</Label>
+            <Popover open={openCustomer} onOpenChange={setOpenCustomer}>
+              <PopoverTrigger render={<Button variant="outline" role="combobox" className="w-full justify-between h-9 text-sm" />}>
+                {customerId === "guest"
+                  ? "Guest (No account)"
+                  : selectedCustomer
+                  ? `${selectedCustomer.name} (${selectedCustomer.phone})`
+                  : "Search or select a customer..."}
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </PopoverTrigger>
+              <PopoverContent className="w-[400px] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Search customers..." />
+                  <CommandList>
+                    <CommandEmpty>No customer found.</CommandEmpty>
+                    <CommandGroup>
+                      <CommandItem
+                        value="Guest (No account)"
+                        onSelect={() => {
+                          setCustomerId("guest")
+                          setOpenCustomer(false)
+                        }}
+                      >
+                        <Check
+                          className={cn(
+                            "mr-2 h-4 w-4",
+                            customerId === "guest" ? "opacity-100" : "opacity-0"
+                          )}
+                        />
+                        Guest (No account)
+                      </CommandItem>
+                      {customers.map((c) => (
+                        <CommandItem
+                          key={c.id}
+                          value={`${c.name} ${c.phone}`}
+                          onSelect={() => {
+                            setCustomerId(c.id)
+                            setOpenCustomer(false)
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              customerId === c.id ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          {c.name} ({c.phone})
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
 
           <div className="space-y-1.5">

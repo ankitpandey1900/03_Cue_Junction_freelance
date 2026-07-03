@@ -108,7 +108,16 @@ export function CustomerForm({ initialData, onSuccess }: CustomerFormProps) {
             <FormItem>
               <FormLabel>Phone Number</FormLabel>
               <FormControl>
-                <Input placeholder="9876543210" {...field} />
+                <Input 
+                  type="tel" 
+                  maxLength={10} 
+                  placeholder="9876543210" 
+                  {...field} 
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, "")
+                    field.onChange(value)
+                  }}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>

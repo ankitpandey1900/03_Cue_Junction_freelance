@@ -81,17 +81,17 @@ export function DashboardAnalytics({ stats }: DashboardAnalyticsProps) {
             </div>
           </div>
           <div className="grid grid-cols-3 gap-3 text-center text-[11px] sm:min-w-[380px]">
-            <div className="rounded-xl border border-blue-500/25 bg-blue-500/10 p-2 flex flex-col justify-center">
-              <p className="font-mono text-sm font-extrabold text-blue-400">{stats.invoicesCount}</p>
-              <p className="text-[10px] text-blue-500/80 font-bold uppercase tracking-wider mt-0.5">Bills</p>
+            <div className="rounded-lg border border-border bg-background p-2 flex flex-col justify-center">
+              <p className="font-mono text-sm font-extrabold text-foreground">{stats.invoicesCount}</p>
+              <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider mt-0.5">Bills</p>
             </div>
-            <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-2 flex flex-col justify-center">
-              <p className="font-mono text-sm font-extrabold text-emerald-400">{stats.collectionRate.toFixed(0)}%</p>
-              <p className="text-[10px] text-emerald-500/80 font-bold uppercase tracking-wider mt-0.5">Collected</p>
+            <div className="rounded-lg border border-border bg-background p-2 flex flex-col justify-center">
+              <p className="font-mono text-sm font-extrabold text-foreground">{stats.collectionRate.toFixed(0)}%</p>
+              <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider mt-0.5">Collected</p>
             </div>
-            <div className="rounded-xl border border-indigo-500/25 bg-indigo-500/10 p-2 flex flex-col justify-center">
-              <p className="font-mono text-sm font-extrabold text-indigo-400">{stats.totalCustomers}</p>
-              <p className="text-[10px] text-indigo-500/80 font-bold uppercase tracking-wider mt-0.5">Customers</p>
+            <div className="rounded-lg border border-border bg-background p-2 flex flex-col justify-center">
+              <p className="font-mono text-sm font-extrabold text-foreground">{stats.totalCustomers}</p>
+              <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider mt-0.5">Customers</p>
             </div>
           </div>
         </div>

@@ -32,7 +32,7 @@ export default async function DashboardIndex() {
       _sum: { amount: true },
     }),
     prisma.invoice.count({
-      where: { status: { in: ["UNPAID", "PARTIAL"] } },
+      where: { status: { in: ["UNPAID", "PARTIAL"] }, isArchived: false },
     }),
     prisma.customer.count({ where: { isArchived: false } as any }),
   ])
@@ -69,86 +69,86 @@ export default async function DashboardIndex() {
             Shift view for tables, running balances, invoices, and customer activity
           </p>
         </div>
-        <div className="grid grid-cols-2 sm:flex gap-2">
+        <div className="grid grid-cols-3 sm:flex gap-2 mt-3 sm:mt-0">
           <Link href="/cafe">
-            <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
-              <ShoppingCart className="h-3.5 w-3.5" />
-              Cafe
+            <Button variant="outline" size="sm" className="w-full h-8 gap-1.5 text-xs px-2">
+              <ShoppingCart className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">Cafe</span>
             </Button>
           </Link>
           <Link href="/sessions">
-            <Button size="sm" className="h-8 gap-1.5 text-xs">
-              <Timer className="h-3.5 w-3.5" />
-              Sessions
+            <Button size="sm" className="w-full h-8 gap-1.5 text-xs px-2">
+              <Timer className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">Sessions</span>
             </Button>
           </Link>
           <Link href="/invoices">
-            <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs w-full sm:w-auto">
-              <Receipt className="h-3.5 w-3.5" />
-              Invoices
+            <Button variant="outline" size="sm" className="w-full h-8 gap-1.5 text-xs px-2">
+              <Receipt className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">Invoices</span>
             </Button>
           </Link>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
         <Card className="bg-card/40 border-border/50">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div>
-              <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Available Tables</p>
-              <p className="text-2xl font-bold font-mono text-emerald-500 mt-1">
-                {availableTables} / {tables.length}
-              </p>
-              <p className="text-[11px] text-muted-foreground mt-1">{occupiedTables} currently occupied</p>
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex justify-between items-start mb-2">
+              <p className="text-[9px] sm:text-[10px] text-muted-foreground uppercase font-bold tracking-wider leading-tight w-[70%]">Available Tables</p>
+              <div className="h-7 w-7 sm:h-9 sm:w-9 rounded-md bg-emerald-500/10 flex items-center justify-center shrink-0">
+                <Layers className="h-3.5 w-3.5 sm:h-4.5 sm:w-4.5 text-emerald-500" />
+              </div>
             </div>
-            <div className="h-9 w-9 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-              <Layers className="h-4.5 w-4.5 text-emerald-500" />
-            </div>
+            <p className="text-xl sm:text-2xl font-bold font-mono text-emerald-500">
+              {availableTables} <span className="text-sm text-emerald-500/70">/ {tables.length}</span>
+            </p>
+            <p className="text-[9px] sm:text-[11px] text-muted-foreground mt-0.5 truncate">{occupiedTables} occupied</p>
           </CardContent>
         </Card>
 
         <Card className="bg-card/40 border-border/50">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div>
-              <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Active Play Sessions</p>
-              <p className="text-2xl font-bold font-mono text-amber-500 mt-1">
-                {activeSessions.length}
-              </p>
-              <p className="text-[11px] text-muted-foreground mt-1">{formatCurrency(activeSessionBalance)} running balance</p>
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex justify-between items-start mb-2">
+              <p className="text-[9px] sm:text-[10px] text-muted-foreground uppercase font-bold tracking-wider leading-tight w-[70%]">Play Sessions</p>
+              <div className="h-7 w-7 sm:h-9 sm:w-9 rounded-md bg-amber-500/10 flex items-center justify-center shrink-0">
+                <Activity className="h-3.5 w-3.5 sm:h-4.5 sm:w-4.5 text-amber-500" />
+              </div>
             </div>
-            <div className="h-9 w-9 rounded-lg bg-amber-500/10 flex items-center justify-center">
-              <Activity className="h-4.5 w-4.5 text-amber-500" />
-            </div>
+            <p className="text-xl sm:text-2xl font-bold font-mono text-amber-500">
+              {activeSessions.length}
+            </p>
+            <p className="text-[9px] sm:text-[11px] text-muted-foreground mt-0.5 truncate">{formatCurrency(activeSessionBalance)} balance</p>
           </CardContent>
         </Card>
 
         <Card className="bg-card/40 border-border/50">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div>
-              <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Today Collected</p>
-              <p className="text-2xl font-bold font-mono text-foreground mt-1">
-                {formatCurrency(todayCollected)}
-              </p>
-              <p className="text-[11px] text-muted-foreground mt-1">{unpaidInvoicesCount} invoices need attention</p>
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex justify-between items-start mb-2">
+              <p className="text-[9px] sm:text-[10px] text-muted-foreground uppercase font-bold tracking-wider leading-tight w-[70%]">Collected</p>
+              <div className="h-7 w-7 sm:h-9 sm:w-9 rounded-md bg-blue-500/10 flex items-center justify-center shrink-0">
+                <Receipt className="h-3.5 w-3.5 sm:h-4.5 sm:w-4.5 text-blue-500" />
+              </div>
             </div>
-            <div className="h-9 w-9 rounded-lg bg-blue-500/10 flex items-center justify-center">
-              <Receipt className="h-4.5 w-4.5 text-blue-500" />
-            </div>
+            <p className="text-xl sm:text-2xl font-bold font-mono text-foreground">
+              {formatCurrency(todayCollected)}
+            </p>
+            <p className="text-[9px] sm:text-[11px] text-muted-foreground mt-0.5 truncate">{unpaidInvoicesCount} open bills</p>
           </CardContent>
         </Card>
 
         <Card className="bg-card/40 border-border/50">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div>
-              <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Upcoming Bookings</p>
-              <p className="text-2xl font-bold font-mono text-blue-500 mt-1">
-                {upcomingBookingsCount}
-              </p>
-              <p className="text-[11px] text-muted-foreground mt-1">{customerCount} customers on file</p>
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex justify-between items-start mb-2">
+              <p className="text-[9px] sm:text-[10px] text-muted-foreground uppercase font-bold tracking-wider leading-tight w-[70%]">Bookings</p>
+              <div className="h-7 w-7 sm:h-9 sm:w-9 rounded-md bg-blue-500/10 flex items-center justify-center shrink-0">
+                <CalendarCheck className="h-3.5 w-3.5 sm:h-4.5 sm:w-4.5 text-blue-500" />
+              </div>
             </div>
-            <div className="h-9 w-9 rounded-lg bg-blue-500/10 flex items-center justify-center">
-              <CalendarCheck className="h-4.5 w-4.5 text-blue-500" />
-            </div>
+            <p className="text-xl sm:text-2xl font-bold font-mono text-blue-500">
+              {upcomingBookingsCount}
+            </p>
+            <p className="text-[9px] sm:text-[11px] text-muted-foreground mt-0.5 truncate">{customerCount} customers</p>
           </CardContent>
         </Card>
       </div>

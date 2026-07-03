@@ -38,8 +38,14 @@ export async function startSessionAction(data: StartSessionFormValues): Promise<
 
   try {
     const session = await sessionService.startSession(validated.data)
-    const tableInfo = await prisma.table.findUnique({ where: { id: validated.data.tableId } })
-    await logActivity(authSession.user.id, "SESSION_STARTED", "SESSION", session.id, JSON.stringify({ tableName: tableInfo?.name || "Table" }))
+    const tableInfo = await prisma.table.findUnique({ 
+      where: { id: validated.data.tableId },
+      include: { tableType: true } 
+    })
+    await logActivity(authSession.user.id, "SESSION_STARTED", "SESSION", session.id, JSON.stringify({ 
+      tableName: tableInfo?.name || "Table",
+      tableType: tableInfo?.tableType?.name
+    }))
     revalidatePath("/sessions")
     revalidatePath("/tables")
     return {

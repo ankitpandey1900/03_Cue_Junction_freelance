@@ -55,6 +55,10 @@ export async function getDashboardStats(range: ReportDateRange = getDefaultRepor
         order: {
           createdAt: dateWhere,
           status: { not: "CANCELLED" },
+          OR: [
+            { invoiceId: null },
+            { invoice: { isArchived: false } }
+          ]
         },
       },
       take: 500,
