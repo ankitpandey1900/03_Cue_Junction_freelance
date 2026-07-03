@@ -164,7 +164,7 @@ function DetailDialog({ item, open, onClose }: { item: ActivityLogItem; open: bo
             <CalendarPlus className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
             <div>
               <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">When</p>
-              <p className="font-semibold text-foreground mt-0.5">{format(new Date(item.createdAt), "dd MMM yyyy, hh:mm:ss a")}</p>
+              <p suppressHydrationWarning className="font-semibold text-foreground mt-0.5">{format(new Date(item.createdAt), "dd MMM yyyy, hh:mm:ss a")}</p>
             </div>
           </div>
 

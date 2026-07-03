@@ -33,9 +33,10 @@ self.addEventListener('activate', (event) => {
 
 // Fetch Event - Network first fallback to cache for pages, bypass for actions/APIs
 self.addEventListener('fetch', (event) => {
-  // Bypass caching for Server Actions (POST requests), better-auth endpoints, and prisma API queries
+  // Bypass caching for non-HTTP requests, Server Actions, better-auth endpoints, and prisma API queries
   if (
     event.request.method !== 'GET' ||
+    !event.request.url.startsWith('http') ||
     event.request.url.includes('/api/auth') ||
     event.request.url.includes('/_next/data')
   ) {
