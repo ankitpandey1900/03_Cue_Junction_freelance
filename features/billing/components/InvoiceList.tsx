@@ -1,18 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { format } from "date-fns"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
 import {
   Select,
   SelectContent,
@@ -20,9 +11,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Receipt, Search, Eye } from "lucide-react"
+import { Receipt, Search, ChevronRight } from "lucide-react"
 import Link from "next/link"
 import { formatCurrency, formatInvoiceNumber } from "@/lib/formatters"
+import { cn } from "@/lib/utils"
 
 type InvoiceListItem = {
   id: string
@@ -30,6 +22,8 @@ type InvoiceListItem = {
   createdAt: Date | string
   sessionTotal: number
   cafeTotal: number
+  discountAmount: number
+  taxAmount: number
   grandTotal: number
   status: string
   customer: {
@@ -47,42 +41,144 @@ function statusClass(status: string) {
   return "bg-zinc-500/10 text-zinc-500 border-zinc-500/20"
 }
 
+// Grouping types
+type GroupedData = {
+  [year: string]: {
+    total: number;
+    months: {
+      [month: string]: {
+        total: number;
+        weeks: {
+          [week: string]: {
+            total: number;
+            dates: {
+              [date: string]: {
+                total: number;
+                invoices: InvoiceListItem[];
+              };
+            };
+          };
+        };
+      };
+    };
+  };
+};
+
 export function InvoiceList({ invoices }: { invoices: InvoiceListItem[] }) {
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("ALL")
-  const [currentPage, setCurrentPage] = useState(1)
-  const itemsPerPage = 15
+  
+  // Keep track of expanded groups
+  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set())
 
-  const normalizedSearch = searchQuery.toLowerCase().trim()
-  const filteredInvoices = invoices.filter((invoice) => {
-    const invoiceLabel = formatInvoiceNumber(invoice.invoiceNumber, invoice.id).toLowerCase()
-    const matchesSearch =
-      normalizedSearch.length === 0 ||
-      invoice.id.toLowerCase().includes(normalizedSearch) ||
-      invoiceLabel.includes(normalizedSearch) ||
-      invoice.customer?.name?.toLowerCase().includes(normalizedSearch) ||
-      invoice.customer?.phone?.includes(searchQuery)
-
-    const matchesStatus = statusFilter === "ALL" || invoice.status === statusFilter
-    return matchesSearch && matchesStatus
-  })
-
-  const totalPages = Math.ceil(filteredInvoices.length / itemsPerPage)
-  const startIndex = (currentPage - 1) * itemsPerPage
-  const paginatedInvoices = filteredInvoices.slice(startIndex, startIndex + itemsPerPage)
-
-  const handleSearchChange = (val: string) => {
-    setSearchQuery(val)
-    setCurrentPage(1)
+  const toggleNode = (nodeId: string, e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setExpandedNodes((prev) => {
+      const next = new Set(prev)
+      if (next.has(nodeId)) {
+        next.delete(nodeId)
+      } else {
+        next.add(nodeId)
+      }
+      return next
+    })
   }
 
-  const handleStatusChange = (val: string | null) => {
-    setStatusFilter(val ?? "ALL")
-    setCurrentPage(1)
+  const normalizedSearch = searchQuery.toLowerCase().trim()
+  
+  const filteredInvoices = useMemo(() => {
+    return invoices.filter((invoice) => {
+      const invoiceLabel = formatInvoiceNumber(invoice.invoiceNumber, invoice.id).toLowerCase()
+      const matchesSearch =
+        normalizedSearch.length === 0 ||
+        invoice.id.toLowerCase().includes(normalizedSearch) ||
+        invoiceLabel.includes(normalizedSearch) ||
+        invoice.customer?.name?.toLowerCase().includes(normalizedSearch) ||
+        invoice.customer?.phone?.includes(searchQuery)
+
+      const matchesStatus = statusFilter === "ALL" || invoice.status === statusFilter
+      return matchesSearch && matchesStatus
+    })
+  }, [invoices, normalizedSearch, searchQuery, statusFilter])
+
+  // If user is searching, expand all nodes automatically
+  const isSearching = normalizedSearch.length > 0 || statusFilter !== "ALL"
+
+  const groupedData = useMemo(() => {
+    const data: GroupedData = {}
+    
+    // Sort invoices descending (newest first)
+    const sorted = [...filteredInvoices].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    )
+
+    sorted.forEach((invoice) => {
+      const d = new Date(invoice.createdAt)
+      const year = format(d, "yyyy")
+      const month = format(d, "MMMM") // e.g., "July"
+      // Quick fallback if getWeekOfMonth fails for some reason
+      const weekNum = Math.ceil(d.getDate() / 7)
+      const week = `WEEK ${weekNum}`
+      const dateStr = format(d, "EEE, MMM d").toUpperCase() // e.g., "SUN, JUL 5"
+
+      const amount = invoice.status !== "CANCELLED" ? invoice.grandTotal : 0
+
+      if (!data[year]) data[year] = { total: 0, months: {} }
+      data[year].total += amount
+      
+      if (!data[year].months[month]) data[year].months[month] = { total: 0, weeks: {} }
+      data[year].months[month].total += amount
+
+      if (!data[year].months[month].weeks[week]) data[year].months[month].weeks[week] = { total: 0, dates: {} }
+      data[year].months[month].weeks[week].total += amount
+
+      if (!data[year].months[month].weeks[week].dates[dateStr]) data[year].months[month].weeks[week].dates[dateStr] = { total: 0, invoices: [] }
+      data[year].months[month].weeks[week].dates[dateStr].total += amount
+      data[year].months[month].weeks[week].dates[dateStr].invoices.push(invoice)
+    })
+
+    return data
+  }, [filteredInvoices])
+
+  const isExpanded = (nodeId: string) => isSearching || expandedNodes.has(nodeId)
+
+  const renderGroupHeader = (nodeId: string, label: string, total: number, depth: number) => {
+    const expanded = isExpanded(nodeId)
+    return (
+      <div 
+        onClick={(e) => toggleNode(nodeId, e)} 
+        className={cn(
+          "flex items-center justify-between p-3 cursor-pointer hover:bg-accent/40 border-b border-border/40 transition-colors select-none",
+          depth === 0 && "bg-card/50",
+          depth === 1 && "bg-card/30 pl-6",
+          depth === 2 && "bg-background pl-10",
+          depth === 3 && "bg-background pl-14"
+        )}
+      >
+        <div className="flex items-center gap-3">
+          <ChevronRight className={cn("h-4 w-4 text-muted-foreground transition-transform", expanded && "rotate-90")} />
+          <span className={cn(
+            "uppercase tracking-wider",
+            depth === 0 && "font-bold text-base text-foreground",
+            depth === 1 && "font-bold text-sm text-foreground",
+            depth === 2 && "font-semibold text-xs text-muted-foreground",
+            depth === 3 && "font-bold text-xs text-foreground"
+          )}>
+            {label}
+          </span>
+        </div>
+        {total > 0 && (
+          <Badge className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20 text-xs font-mono px-2 py-0.5">
+            IN +{formatCurrency(total)}
+          </Badge>
+        )}
+      </div>
+    )
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 pb-10">
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
         <div className="relative flex-1 w-full max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -90,11 +186,11 @@ export function InvoiceList({ invoices }: { invoices: InvoiceListItem[] }) {
             placeholder="Search invoice, customer or phone..."
             className="pl-9 h-9 text-xs"
             value={searchQuery}
-            onChange={(e) => handleSearchChange(e.target.value)}
+            onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
 
-        <Select value={statusFilter} onValueChange={handleStatusChange}>
+        <Select value={statusFilter} onValueChange={(val) => setStatusFilter(val || "ALL")}>
           <SelectTrigger className="w-full sm:w-[150px] h-9 text-xs bg-background/50 border-border">
             <SelectValue placeholder="All Statuses" />
           </SelectTrigger>
@@ -109,178 +205,107 @@ export function InvoiceList({ invoices }: { invoices: InvoiceListItem[] }) {
         </Select>
       </div>
 
-      <div className="grid gap-3 md:hidden">
-        {filteredInvoices.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-border p-10 text-center">
-            <Receipt className="h-5 w-5 text-muted-foreground mx-auto mb-2" />
-            <p className="text-xs text-muted-foreground">No invoices found matching current criteria.</p>
+      <div className="rounded-xl border border-border/60 bg-card/20 overflow-hidden shadow-sm">
+        {Object.keys(groupedData).length === 0 ? (
+          <div className="p-12 text-center">
+            <Receipt className="h-6 w-6 text-muted-foreground mx-auto mb-3 opacity-50" />
+            <p className="text-sm text-muted-foreground">No invoices found matching current criteria.</p>
           </div>
         ) : (
-          paginatedInvoices.map((invoice) => (
-            <Link
-              key={invoice.id}
-              href={`/invoices/${invoice.id}`}
-              className="rounded-lg border border-border bg-card p-4 space-y-3 active:bg-accent/60"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="font-mono text-sm font-semibold text-foreground">
-                    {formatInvoiceNumber(invoice.invoiceNumber, invoice.id)}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {format(new Date(invoice.createdAt), "MMM d, yyyy")}
-                  </p>
+          Object.entries(groupedData).map(([year, yearData]) => (
+            <div key={year} className="group-year">
+              {renderGroupHeader(year, year, yearData.total, 0)}
+              
+              {isExpanded(year) && (
+                <div className="animate-in slide-in-from-top-2 duration-200">
+                  {Object.entries(yearData.months).map(([month, monthData]) => {
+                    const monthId = `${year}-${month}`
+                    return (
+                      <div key={monthId} className="group-month border-l border-border/30 ml-2">
+                        {renderGroupHeader(monthId, month, monthData.total, 1)}
+                        
+                        {isExpanded(monthId) && (
+                          <div className="animate-in slide-in-from-top-2 duration-200">
+                            {Object.entries(monthData.weeks).map(([week, weekData]) => {
+                              const weekId = `${monthId}-${week}`
+                              return (
+                                <div key={weekId} className="group-week border-l border-border/30 ml-4">
+                                  {renderGroupHeader(weekId, week, weekData.total, 2)}
+                                  
+                                  {isExpanded(weekId) && (
+                                    <div className="animate-in slide-in-from-top-2 duration-200">
+                                      {Object.entries(weekData.dates).map(([dateStr, dateData]) => {
+                                        const dateId = `${weekId}-${dateStr}`
+                                        return (
+                                          <div key={dateId} className="group-date border-l border-border/30 ml-4">
+                                            {renderGroupHeader(dateId, dateStr, dateData.total, 3)}
+                                            
+                                            {isExpanded(dateId) && (
+                                              <div className="animate-in slide-in-from-top-2 duration-200 bg-background/50 divide-y divide-border/40">
+                                                {dateData.invoices.map((invoice) => (
+                                                  <Link 
+                                                    key={invoice.id} 
+                                                    href={`/invoices/${invoice.id}`} 
+                                                    className="flex flex-col sm:flex-row sm:items-center justify-between p-4 hover:bg-accent/40 transition-colors pl-6 sm:pl-16 gap-3"
+                                                  >
+                                                    <div className="flex items-center gap-4">
+                                                      <div className="hidden sm:flex h-10 w-10 rounded-full bg-amber-500/10 items-center justify-center shrink-0 border border-amber-500/20">
+                                                        <Receipt className="h-4 w-4 text-amber-500" />
+                                                      </div>
+                                                      <div>
+                                                        <div className="flex items-center gap-2">
+                                                          <p className="text-sm font-semibold text-foreground">
+                                                            {invoice.customer?.name || "Guest"}
+                                                          </p>
+                                                          <span className="text-[10px] text-muted-foreground font-mono">
+                                                            {formatInvoiceNumber(invoice.invoiceNumber, invoice.id)}
+                                                          </span>
+                                                        </div>
+                                                        <div className="flex flex-wrap items-center gap-2 mt-1">
+                                                          <Badge variant="secondary" className={cn("text-[9px] px-1.5 py-0 uppercase tracking-wider font-bold", statusClass(invoice.status))}>
+                                                            {invoice.status}
+                                                          </Badge>
+                                                          <span className="text-xs text-muted-foreground whitespace-nowrap">
+                                                            Session: {formatCurrency(invoice.sessionTotal)} • Cafe: {formatCurrency(invoice.cafeTotal)}
+                                                            {invoice.discountAmount > 0 && ` • ${invoice.status === 'CANCELLED' ? 'Voided' : 'Disc'}: -${formatCurrency(invoice.discountAmount)}`}
+                                                            {invoice.taxAmount > 0 && ` • Tax: +${formatCurrency(invoice.taxAmount)}`}
+                                                          </span>
+                                                        </div>
+                                                      </div>
+                                                    </div>
+                                                    <div className="text-left sm:text-right">
+                                                      <p className={cn(
+                                                        "font-mono text-base font-semibold",
+                                                        invoice.status === "PAID" || invoice.status === "PARTIAL" 
+                                                          ? "text-emerald-500" 
+                                                          : "text-foreground"
+                                                      )}>
+                                                        {formatCurrency(invoice.grandTotal)}
+                                                      </p>
+                                                    </div>
+                                                  </Link>
+                                                ))}
+                                              </div>
+                                            )}
+                                          </div>
+                                        )
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
+                              )
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
                 </div>
-                <Badge variant="secondary" className={`text-[10px] font-medium ${statusClass(invoice.status)}`}>
-                  {invoice.status}
-                </Badge>
-              </div>
-              <div className="flex items-end justify-between gap-3 border-t border-border/50 pt-3">
-                <div>
-                  <p className="text-xs text-muted-foreground">Customer</p>
-                  <p className="text-sm font-medium text-foreground">
-                    {invoice.customer?.name || "Guest"}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs text-muted-foreground">Total</p>
-                  <p className="font-mono text-lg font-semibold text-foreground">
-                    {formatCurrency(invoice.grandTotal)}
-                  </p>
-                </div>
-              </div>
-            </Link>
+              )}
+            </div>
           ))
         )}
       </div>
-
-      <div className="hidden rounded-lg border border-border bg-card overflow-hidden md:block">
-        <Table>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              <TableHead className="text-xs">Invoice</TableHead>
-              <TableHead className="text-xs">Date</TableHead>
-              <TableHead className="text-xs">Customer</TableHead>
-              <TableHead className="text-xs text-right">Session</TableHead>
-              <TableHead className="text-xs text-right">Cafe</TableHead>
-              <TableHead className="text-xs text-right">Total</TableHead>
-              <TableHead className="text-xs text-right">Status</TableHead>
-              <TableHead className="text-xs text-right print:hidden">Action</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredInvoices.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={8} className="text-center py-12">
-                  <Receipt className="h-5 w-5 text-muted-foreground mx-auto mb-2" />
-                  <p className="text-xs text-muted-foreground">No invoices found matching current criteria.</p>
-                </TableCell>
-              </TableRow>
-            ) : (
-              paginatedInvoices.map((invoice) => (
-                <TableRow key={invoice.id} className="hover:bg-accent/50 transition-colors">
-                  <TableCell className="font-mono text-xs text-foreground">
-                    {formatInvoiceNumber(invoice.invoiceNumber, invoice.id)}
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {format(new Date(invoice.createdAt), "MMM d, yyyy")}
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {invoice.customer?.name || "Guest"}
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground text-right font-mono">
-                    {formatCurrency(invoice.sessionTotal)}
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground text-right font-mono">
-                    {formatCurrency(invoice.cafeTotal)}
-                  </TableCell>
-                  <TableCell className="text-sm font-semibold text-foreground text-right font-mono">
-                    {formatCurrency(invoice.grandTotal)}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Badge variant="secondary" className={`text-[10px] font-medium ${statusClass(invoice.status)}`}>
-                      {invoice.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right print:hidden">
-                    <Link href={`/invoices/${invoice.id}`}>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground">
-                        <Eye className="h-3.5 w-3.5" />
-                      </Button>
-                    </Link>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
-
-      {totalPages > 1 && (
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-border/40 pt-4 px-1">
-          <p className="text-xs text-muted-foreground">
-            Showing <span className="font-medium text-foreground">{startIndex + 1}</span> to{" "}
-            <span className="font-medium text-foreground">
-              {Math.min(startIndex + itemsPerPage, filteredInvoices.length)}
-            </span>{" "}
-            of <span className="font-medium text-foreground">{filteredInvoices.length}</span> invoices
-          </p>
-          <div className="flex items-center gap-1.5">
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8 text-xs px-2.5 bg-background/50 border-border"
-              disabled={currentPage === 1}
-              onClick={() => setCurrentPage((prev) => prev - 1)}
-            >
-              Previous
-            </Button>
-            <div className="flex items-center gap-1">
-              {Array.from({ length: totalPages }).map((_, idx) => {
-                const pageNum = idx + 1
-                if (
-                  totalPages <= 5 ||
-                  pageNum === 1 ||
-                  pageNum === totalPages ||
-                  Math.abs(pageNum - currentPage) <= 1
-                ) {
-                  return (
-                    <Button
-                      key={pageNum}
-                      variant={currentPage === pageNum ? "default" : "outline"}
-                      size="sm"
-                      className="h-8 w-8 text-xs p-0 border-border"
-                      onClick={() => setCurrentPage(pageNum)}
-                    >
-                      {pageNum}
-                    </Button>
-                  )
-                }
-                if (
-                  (pageNum === 2 && currentPage > 3) ||
-                  (pageNum === totalPages - 1 && currentPage < totalPages - 2)
-                ) {
-                  return (
-                    <span key={pageNum} className="text-xs text-muted-foreground px-1 select-none">
-                      ...
-                    </span>
-                  )
-                }
-                return null
-              })}
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8 text-xs px-2.5 bg-background/50 border-border"
-              disabled={currentPage === totalPages}
-              onClick={() => setCurrentPage((prev) => prev + 1)}
-            >
-              Next
-            </Button>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

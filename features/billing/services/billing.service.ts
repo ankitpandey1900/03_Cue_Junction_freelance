@@ -19,6 +19,8 @@ export async function getInvoices() {
       createdAt: true,
       sessionTotal: true,
       cafeTotal: true,
+      discountAmount: true,
+      taxAmount: true,
       grandTotal: true,
       status: true,
       customer: {

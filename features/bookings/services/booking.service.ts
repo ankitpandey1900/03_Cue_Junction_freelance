@@ -9,8 +9,9 @@ export async function getBookings() {
         include: {
           tableType: true
         }
-      }
-    },
+      },
+      tableType: true
+    } as any,
     orderBy: {
       startTime: "asc"
     }
@@ -25,8 +26,13 @@ export async function getUpcomingBookings() {
     },
     include: {
       customer: true,
-      table: true
-    },
+      table: {
+        include: {
+          tableType: true
+        }
+      },
+      tableType: true
+    } as any,
     orderBy: {
       startTime: "asc"
     }
@@ -37,15 +43,21 @@ export async function createBooking(data: CreateBookingFormValues) {
   return await prisma.booking.create({
     data: {
       customerId: data.customerId,
-      tableId: data.tableId,
+      tableId: (data.tableId || null) as any,
+      tableTypeId: (data.tableTypeId || null) as any,
       startTime: new Date(data.startTime),
       endTime: new Date(data.endTime),
       status: data.status,
     },
     include: {
       customer: true,
-      table: true
-    }
+      table: {
+        include: {
+          tableType: true
+        }
+      },
+      tableType: true
+    } as any
   })
 }
 

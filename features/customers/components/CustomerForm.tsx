@@ -111,7 +111,7 @@ export function CustomerForm({ initialData, onSuccess }: CustomerFormProps) {
                 <Input 
                   type="tel" 
                   maxLength={10} 
-                  placeholder="9876543210" 
+                  placeholder="9000000000" 
                   {...field} 
                   onChange={(e) => {
                     const value = e.target.value.replace(/\D/g, "")

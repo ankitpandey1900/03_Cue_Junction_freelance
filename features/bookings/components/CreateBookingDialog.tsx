@@ -17,6 +17,9 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  SelectGroup,
+  SelectLabel,
+  SelectSeparator,
 } from "@/components/ui/select"
 import {
   Command,
@@ -39,10 +42,12 @@ import { cn } from "@/lib/utils"
 // Types
 type CustomerList = Pick<Customer, "id" | "name" | "phone">
 type TableList = Table & { tableType: { name: string } }
+type TableTypeList = { id: string, name: string }
 
 interface CreateBookingDialogProps {
   customers: CustomerList[]
   tables: TableList[]
+  tableTypes: TableTypeList[]
   open: boolean
   onOpenChange: (open: boolean) => void
 }
@@ -50,6 +55,7 @@ interface CreateBookingDialogProps {
 export function CreateBookingDialog({
   customers,
   tables,
+  tableTypes,
   open,
   onOpenChange,
 }: CreateBookingDialogProps) {
@@ -81,11 +87,20 @@ export function CreateBookingDialog({
     if (!customerId) return toast.error("Please select a customer")
     if (!tableId) return toast.error("Please select a table")
 
+    let selectedTableId = tableId
+    let selectedTableTypeId = null
+
+    if (tableId.startsWith("type_")) {
+      selectedTableId = "" // Empty string will be sent as null/empty
+      selectedTableTypeId = tableId.replace("type_", "")
+    }
+
     setLoading(true)
     try {
       const res = await createBookingAction({
         customerId,
-        tableId,
+        tableId: selectedTableId || undefined, // undefined prevents sending empty string if validation fails
+        tableTypeId: selectedTableTypeId || undefined,
         startTime: new Date(startTime).toISOString(),
         endTime: new Date(endTime).toISOString(),
         status: "CONFIRMED"
@@ -160,15 +175,29 @@ export function CreateBookingDialog({
             <Select value={tableId} onValueChange={(val) => setTableId(val || "")}>
               <SelectTrigger>
                 <SelectValue placeholder="Choose a table...">
-                  {selectedTable ? `${selectedTable.name} (${selectedTable.tableType.name})` : null}
+                  {tableId.startsWith("type_") 
+                    ? `Any ${tableTypes.find(t => t.id === tableId.replace("type_", ""))?.name} Table`
+                    : selectedTable ? `${selectedTable.name} (${selectedTable.tableType.name})` : null}
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
-                {tables.map((t) => (
-                  <SelectItem key={t.id} value={t.id}>
-                    {t.name} ({t.tableType.name})
-                  </SelectItem>
-                ))}
+                <SelectGroup>
+                  <SelectLabel>Unassigned (Any Available)</SelectLabel>
+                  {tableTypes.map((type) => (
+                    <SelectItem key={`type_${type.id}`} value={`type_${type.id}`}>
+                      Any {type.name} Table
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+                <SelectSeparator />
+                <SelectGroup>
+                  <SelectLabel>Specific Tables</SelectLabel>
+                  {tables.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.name} ({t.tableType.name})
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
               </SelectContent>
             </Select>
           </div>

@@ -12,9 +12,10 @@ type TableList = Table & { tableType: { name: string } }
 interface BookingsPageClientProps {
   customers: CustomerList[]
   tables: TableList[]
+  tableTypes: { id: string, name: string }[]
 }
 
-export function BookingsPageClient({ customers, tables }: BookingsPageClientProps) {
+export function BookingsPageClient({ customers, tables, tableTypes }: BookingsPageClientProps) {
   const [createOpen, setCreateOpen] = useState(false)
 
   return (
@@ -29,6 +30,7 @@ export function BookingsPageClient({ customers, tables }: BookingsPageClientProp
         onOpenChange={setCreateOpen} 
         customers={customers}
         tables={tables}
+        tableTypes={tableTypes}
       />
     </>
   )

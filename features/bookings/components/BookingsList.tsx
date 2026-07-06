@@ -47,7 +47,11 @@ type BookingViewModel = {
     tableType: {
       name: string
     }
-  }
+  } | null
+  tableType: {
+    id: string
+    name: string
+  } | null
 }
 
 function statusClass(status: string) {
@@ -57,7 +61,17 @@ function statusClass(status: string) {
   return "bg-zinc-500/10 text-zinc-500 border-zinc-500/20"
 }
 
-export function BookingsList({ bookings }: { bookings: BookingViewModel[] }) {
+type TableList = {
+  id: string
+  name: string
+  status: string
+  tableType: {
+    id: string
+    name: string
+  }
+}
+
+export function BookingsList({ bookings, tables }: { bookings: BookingViewModel[], tables: TableList[] }) {
   const [loadingId, setLoadingId] = useState<string | null>(null)
   const [startDialogBooking, setStartDialogBooking] = useState<BookingViewModel | null>(null)
 
@@ -198,8 +212,14 @@ export function BookingsList({ bookings }: { bookings: BookingViewModel[] }) {
                   <div className="text-xs text-muted-foreground">{b.customer.phone}</div>
                 </TableCell>
                 <TableCell>
-                  <div className="font-medium text-foreground">{b.table.name}</div>
-                  <div className="text-xs text-muted-foreground">{b.table.tableType.name}</div>
+                  <div className="flex flex-col">
+                    <span className="font-medium text-foreground">
+                      {b.table ? b.table.name : `Any ${b.tableType?.name} Table`}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {b.table ? b.table.tableType.name : "Unassigned"}
+                    </span>
+                  </div>
                 </TableCell>
                 <TableCell>
                   <div className="text-sm text-foreground">
@@ -256,12 +276,14 @@ export function BookingsList({ bookings }: { bookings: BookingViewModel[] }) {
       {startDialogBooking && (
         <BookingStartDialog
           open={!!startDialogBooking}
-          onOpenChange={(open) => { if (!open) setStartDialogBooking(null) }}
+          onOpenChange={(open) => !open && setStartDialogBooking(null)}
           bookingId={startDialogBooking.id}
-          tableId={startDialogBooking.table.id}
-          tableName={startDialogBooking.table.name}
+          tableId={startDialogBooking.table?.id || ""}
+          tableTypeId={startDialogBooking.tableType?.id || ""}
+          tableName={startDialogBooking.table?.name || `Any ${startDialogBooking.tableType?.name} Table`}
           customerId={startDialogBooking.customer.id}
           customerName={startDialogBooking.customer.name}
+          availableTables={tables}
         />
       )}
     </>

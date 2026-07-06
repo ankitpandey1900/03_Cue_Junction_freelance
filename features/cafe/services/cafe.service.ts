@@ -67,7 +67,7 @@ export async function placeOrder(data: PlaceOrderValues & { createdBy?: string }
     const orderTotal = Math.max(0, orderSubtotal - discount + tax)
 
     // Create CustomerOrder
-    return await tx.customerOrder.create({
+    const order = await tx.customerOrder.create({
       data: {
         sessionId: data.sessionId || null,
         customerId,
@@ -86,6 +86,26 @@ export async function placeOrder(data: PlaceOrderValues & { createdBy?: string }
         orderItems: true,
       },
     })
+
+    // If it's a completely anonymous walk-in order (no session, no customer),
+    // automatically generate an UNPAID invoice for it so it can be billed.
+    if (!data.sessionId && !customerId) {
+      await tx.invoice.create({
+        data: {
+          cafeTotal: orderTotal,
+          sessionTotal: 0,
+          taxAmount: tax,
+          discountAmount: discount,
+          grandTotal: orderTotal,
+          status: "UNPAID",
+          orders: {
+            connect: { id: order.id }
+          }
+        }
+      })
+    }
+
+    return order
   })
 }
 

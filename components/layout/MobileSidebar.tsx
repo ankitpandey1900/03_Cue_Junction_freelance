@@ -62,6 +62,7 @@ export function MobileSidebar({ navItems, userName, userRole }: MobileSidebarPro
 
   // Close on pathname change (navigation complete)
   useEffect(() => {
+    // eslint-disable-next-line
     setOpen(false)
   }, [pathname])
 

@@ -152,7 +152,7 @@ function TimelineDialog({ group, open, onClose }: { group: EventGroup | null; op
   let tableName = "Unknown Table"
   let tableType = ""
   let totalAmountPaid = 0
-  let paymentMethods = new Set<string>()
+  const paymentMethods = new Set<string>()
   let invoiceNumber = null
   let lastReceiver = ""
   
@@ -305,11 +305,12 @@ export function HistoryFeed({ items, total, page, totalPages, currentFilter, cus
   const router = useRouter()
   const searchParams = useSearchParams()
   const [selectedGroup, setSelectedGroup] = useState<EventGroup | null>(null)
+  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set(["TODAY", "YESTERDAY"]))
   
-  const groupedItems = useMemo(() => {
-    const groups: EventGroup[] = []
+  const groupedHistory = useMemo(() => {
     const map = new Map<string, EventGroup>()
     
+    // 1. Group items by entityId into EventGroup
     for (const item of items) {
       let meta: Record<string, any> = {}
       try { if (item.metadata) meta = JSON.parse(item.metadata) } catch {}
@@ -318,7 +319,6 @@ export function HistoryFeed({ items, total, page, totalPages, currentFilter, cus
       const key = sessionId ? `FLOW-${sessionId}` : item.entityId ? `${item.entityType}-${item.entityId}` : item.id
 
       if (!map.has(key)) {
-        // We use a combined entityType if it's a FLOW
         const group: EventGroup = { 
           entityId: sessionId || item.entityId || item.id, 
           entityType: sessionId ? 'SESSION_FLOW' : item.entityType, 
@@ -326,11 +326,51 @@ export function HistoryFeed({ items, total, page, totalPages, currentFilter, cus
           latestItem: item 
         }
         map.set(key, group)
-        groups.push(group)
       }
       map.get(key)!.items.push(item)
     }
-    return groups
+
+    const groups = Array.from(map.values()).sort(
+      (a, b) => new Date(b.latestItem.createdAt).getTime() - new Date(a.latestItem.createdAt).getTime()
+    )
+
+    // 2. Group into Month > Date
+    type HistoryNode = {
+      [monthStr: string]: {
+        count: number;
+        dates: {
+          [dateLabel: string]: {
+            count: number;
+            groups: EventGroup[];
+          }
+        }
+      }
+    }
+
+    const data: HistoryNode = {}
+    const todayStr = format(new Date(), "yyyy-MM-dd")
+    const yesterdayDate = new Date()
+    yesterdayDate.setDate(yesterdayDate.getDate() - 1)
+    const yesterdayStr = format(yesterdayDate, "yyyy-MM-dd")
+
+    for (const g of groups) {
+      const d = new Date(g.latestItem.createdAt)
+      const monthStr = format(d, "MMMM yyyy").toUpperCase()
+      
+      const exactDateStr = format(d, "yyyy-MM-dd")
+      let dateLabel = format(d, "EEE, MMM d, yyyy").toUpperCase()
+      if (exactDateStr === todayStr) dateLabel = "TODAY"
+      else if (exactDateStr === yesterdayStr) dateLabel = "YESTERDAY"
+
+      if (!data[monthStr]) data[monthStr] = { count: 0, dates: {} }
+      if (!data[monthStr].dates[dateLabel]) data[monthStr].dates[dateLabel] = { count: 0, groups: [] }
+      
+      data[monthStr].count += 1
+      data[monthStr].dates[dateLabel].count += 1
+      data[monthStr].dates[dateLabel].groups.push(g)
+    }
+
+    return data
   }, [items])
 
   function navigate(params: Record<string, string>) {
@@ -342,8 +382,49 @@ export function HistoryFeed({ items, total, page, totalPages, currentFilter, cus
   function setFilter(f: HistoryFilter) { navigate({ filter: f, page: "1", from: "", to: "" }) }
   function setPage(p: number) { navigate({ page: String(p) }) }
 
+  const toggleNode = (nodeId: string, e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setExpandedNodes((prev) => {
+      const next = new Set(prev)
+      if (next.has(nodeId)) next.delete(nodeId)
+      else next.add(nodeId)
+      return next
+    })
+  }
+
+  // If a custom filter is active, auto-expand everything for visibility
+  const isCustomFilter = currentFilter !== "all" && currentFilter !== "month" && currentFilter !== "week"
+  const isExpanded = (nodeId: string) => isCustomFilter || expandedNodes.has(nodeId)
+
+  const renderGroupHeader = (nodeId: string, label: string, count: number, depth: number) => {
+    const expanded = isExpanded(nodeId)
+    return (
+      <div 
+        onClick={(e) => toggleNode(nodeId, e)} 
+        className={`flex items-center justify-between p-3 cursor-pointer hover:bg-accent/40 border-b border-border/40 transition-colors select-none ${
+          depth === 0 ? "bg-card/50" : "bg-card/30 pl-6"
+        }`}
+      >
+        <div className="flex items-center gap-3">
+          <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${expanded ? "rotate-90" : ""}`} />
+          <span className={`uppercase tracking-wider ${
+            depth === 0 ? "font-bold text-base text-foreground" : "font-bold text-sm text-foreground"
+          }`}>
+            {label}
+          </span>
+        </div>
+        <Badge className="bg-primary/10 text-primary border-primary/20 text-xs font-mono px-2 py-0.5">
+          {count} Events
+        </Badge>
+      </div>
+    )
+  }
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 pb-10">
+      <TimelineDialog group={selectedGroup} open={!!selectedGroup} onClose={() => setSelectedGroup(null)} />
+
       {/* Filters */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-center gap-1.5 flex-wrap">
@@ -398,99 +479,94 @@ export function HistoryFeed({ items, total, page, totalPages, currentFilter, cus
         </div>
       )}
 
-      {/* Table */}
+      {/* Hierarchical Accordion Feed */}
       {items.length > 0 && (
-        <div className="rounded-xl border border-border bg-card overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent bg-muted/30">
-                <TableHead className="text-[11px] font-bold w-[160px] hidden sm:table-cell">Date & Time</TableHead>
-                <TableHead className="text-[11px] font-bold">Action</TableHead>
-                <TableHead className="text-[11px] font-bold hidden md:table-cell">Subject</TableHead>
-                <TableHead className="text-[11px] font-bold hidden lg:table-cell">Staff</TableHead>
-                <TableHead className="w-[40px]"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {groupedItems.map((group) => {
-                const item = group.latestItem
-                const count = group.items.length
-                const { label: actionLabel, icon: actionIcon, colorClass } = getActionMeta(item.action)
-                return (
-                  <TableRow
-                    key={group.entityId}
-                    className="cursor-pointer hover:bg-accent/40 transition-colors border-b border-border/40 last:border-0"
-                    onClick={() => setSelectedGroup(group)}
-                  >
-                    {/* Date */}
-                    <TableCell className="py-2.5 hidden sm:table-cell">
-                      <div className="text-[11px] font-medium text-foreground">
-                        {format(new Date(item.createdAt), "dd MMM yyyy")}
-                      </div>
-                      <div className="text-[10px] text-muted-foreground font-mono">
-                        {format(new Date(item.createdAt), "hh:mm:ss a")}
-                      </div>
-                    </TableCell>
+        <div className="rounded-xl border border-border/60 bg-card/20 overflow-hidden shadow-sm">
+          {Object.entries(groupedHistory).map(([monthStr, monthData]) => (
+            <div key={monthStr} className="group-month">
+              {renderGroupHeader(monthStr, monthStr, monthData.count, 0)}
 
-                    {/* Action badge */}
-                    <TableCell className="py-2.5">
-                      <div className="flex items-center gap-2">
-                        <Badge
-                          variant="outline"
-                          className={`inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-0.5 border whitespace-nowrap ${colorClass}`}
-                        >
-                          {actionIcon}
-                          {actionLabel}
-                        </Badge>
-                        {count > 1 && (
-                          <span className="text-[10px] font-medium text-muted-foreground">
-                            +{count - 1} event{count > 2 ? 's' : ''}
-                          </span>
+              {isExpanded(monthStr) && (
+                <div className="animate-in slide-in-from-top-2 duration-200">
+                  {Object.entries(monthData.dates).map(([dateLabel, dateData]) => {
+                    const dateId = `${monthStr}-${dateLabel}`
+                    return (
+                      <div key={dateId} className="group-date border-l-2 border-border/30 ml-2">
+                        {renderGroupHeader(dateId, dateLabel, dateData.count, 1)}
+
+                        {isExpanded(dateId) && (
+                          <div className="animate-in slide-in-from-top-2 duration-200 bg-background/50 divide-y divide-border/40">
+                            {dateData.groups.map((group) => {
+                              const item = group.latestItem
+                              const count = group.items.length
+                              const { label: actionLabel, icon: actionIcon, colorClass } = getActionMeta(item.action)
+                              
+                              return (
+                                <div
+                                  key={group.entityId}
+                                  className="flex flex-col sm:flex-row sm:items-center justify-between p-4 hover:bg-accent/40 transition-colors pl-8 sm:pl-12 gap-3 cursor-pointer"
+                                  onClick={() => setSelectedGroup(group)}
+                                >
+                                  <div className="flex items-center gap-4">
+                                    <div className={`hidden sm:flex h-10 w-10 rounded-full items-center justify-center shrink-0 border shadow-sm ${colorClass}`}>
+                                      {actionIcon}
+                                    </div>
+                                    <div>
+                                      <div className="flex items-center gap-2">
+                                        <p className="text-sm font-semibold text-foreground truncate max-w-[200px] sm:max-w-md">
+                                          {item.label}
+                                        </p>
+                                        <span className="text-[10px] text-muted-foreground font-mono whitespace-nowrap">
+                                          {format(new Date(item.createdAt), "hh:mm a")}
+                                        </span>
+                                      </div>
+                                      <div className="flex flex-wrap items-center gap-2 mt-1">
+                                        <Badge variant="secondary" className={`text-[9px] px-1.5 py-0 uppercase tracking-wider font-bold ${colorClass}`}>
+                                          {actionLabel}
+                                        </Badge>
+                                        {item.detail && (
+                                          <span className="text-[10px] text-muted-foreground truncate max-w-[180px]">
+                                            {item.detail}
+                                          </span>
+                                        )}
+                                        {count > 1 && (
+                                          <span className="text-[10px] font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded-sm">
+                                            +{count - 1} event{count > 2 ? 's' : ''}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  
+                                  <div className="flex items-center gap-2 self-start sm:self-center mt-2 sm:mt-0 ml-12 sm:ml-0">
+                                    <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                                      <span className="text-[10px] font-bold text-primary">
+                                        {(item.actorName || item.actorEmail)[0]?.toUpperCase()}
+                                      </span>
+                                    </div>
+                                    <span className="text-xs font-medium text-foreground truncate max-w-[120px]">
+                                      {item.actorName || item.actorEmail}
+                                    </span>
+                                    <Eye className="h-4 w-4 text-muted-foreground hover:text-primary transition-colors ml-2" />
+                                  </div>
+                                </div>
+                              )
+                            })}
+                          </div>
                         )}
                       </div>
-                      {/* On mobile show date inline */}
-                      <div className="text-[10px] text-muted-foreground mt-0.5 sm:hidden">
-                        {format(new Date(item.createdAt), "dd MMM, hh:mm a")}
-                      </div>
-                    </TableCell>
-
-                    {/* Subject */}
-                    <TableCell className="py-2.5 hidden md:table-cell">
-                      <div className="text-xs font-semibold text-foreground truncate max-w-[180px]">{item.label}</div>
-                      {item.detail && (
-                        <div className="text-[10px] text-muted-foreground truncate max-w-[180px]">{item.detail}</div>
-                      )}
-                    </TableCell>
-
-                    {/* Staff */}
-                    <TableCell className="py-2.5 hidden lg:table-cell">
-                      <div className="flex items-center gap-1.5">
-                        <div className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                          <span className="text-[9px] font-bold text-primary">
-                            {(item.actorName || item.actorEmail)[0]?.toUpperCase()}
-                          </span>
-                        </div>
-                        <span className="text-xs text-foreground truncate max-w-[120px]">
-                          {item.actorName || item.actorEmail}
-                        </span>
-                      </div>
-                    </TableCell>
-
-                    {/* Eye */}
-                    <TableCell className="py-2.5 text-center">
-                      <Eye className="h-3.5 w-3.5 text-muted-foreground hover:text-primary transition-colors mx-auto" />
-                    </TableCell>
-                  </TableRow>
-                )
-              })}
-            </TableBody>
-          </Table>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       )}
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between pt-1">
+        <div className="flex items-center justify-between pt-2">
           <p className="text-xs text-muted-foreground">
             Page <span className="font-semibold">{page}</span> of <span className="font-semibold">{totalPages}</span>
           </p>
@@ -503,11 +579,6 @@ export function HistoryFeed({ items, total, page, totalPages, currentFilter, cus
             </Button>
           </div>
         </div>
-      )}
-
-      {/* Detail Dialog */}
-      {selectedGroup && (
-        <TimelineDialog group={selectedGroup} open={!!selectedGroup} onClose={() => setSelectedGroup(null)} />
       )}
     </div>
   )

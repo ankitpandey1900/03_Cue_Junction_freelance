@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { ShoppingCart, Timer, Layers, Activity, CalendarCheck, Receipt, AlertTriangle } from "lucide-react"
 import prisma from "@/lib/prisma"
 import { formatCurrency } from "@/lib/formatters"
+import { format } from "date-fns"
 
 export const dynamic = "force-dynamic"
 
@@ -17,10 +18,23 @@ export default async function DashboardIndex() {
   todayStart.setHours(0, 0, 0, 0)
   const dashboardTime = new Date().getTime()
 
-  const [tables, activeSessions, customers, upcomingBookingsCount, todayPaymentsAgg, unpaidInvoicesCount, customerCount] = await Promise.all([
+  const [tables, activeSessions, customers, upcomingBookings, upcomingBookingsCount, todayPaymentsAgg, unpaidInvoicesCount, customerCount] = await Promise.all([
     getTables(),
     getActiveSessions(),
     getCustomers(),
+    prisma.booking.findMany({
+      where: {
+        startTime: { gte: new Date() },
+        status: { in: ["CONFIRMED", "PENDING"] }
+      },
+      include: {
+        customer: true,
+        table: { include: { tableType: true } },
+        tableType: true
+      } as any,
+      orderBy: { startTime: 'asc' },
+      take: 3
+    }),
     prisma.booking.count({
       where: {
         startTime: { gte: new Date() },
@@ -148,7 +162,22 @@ export default async function DashboardIndex() {
             <p className="text-xl sm:text-2xl font-bold font-mono text-blue-500">
               {upcomingBookingsCount}
             </p>
-            <p className="text-[9px] sm:text-[11px] text-muted-foreground mt-0.5 truncate">{customerCount} customers</p>
+            <p className="text-[9px] sm:text-[11px] text-muted-foreground mt-0.5 truncate">{customerCount} total customers</p>
+            
+            {upcomingBookings.length > 0 && (
+              <div className="space-y-1.5 mt-3 pt-3 border-t border-border/50">
+                {(upcomingBookings as any[]).map((b) => (
+                  <div key={b.id} className="flex justify-between items-center text-[10px]">
+                    <span className="font-medium text-foreground truncate max-w-[60%]">{b.customer.name}</span>
+                    <span className="text-muted-foreground whitespace-nowrap">
+                      {format(new Date(b.startTime), "h:mm a")}
+                      {" • "}
+                      {b.table ? b.table.tableType.name : b.tableType?.name || "Any"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

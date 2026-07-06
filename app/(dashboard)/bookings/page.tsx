@@ -1,20 +1,21 @@
 import { getBookings } from "@/features/bookings/services/booking.service"
 import { getCustomers } from "@/features/customers/services/customer.service"
-import { getTables } from "@/features/tables/services/table.service"
+import { getTables, getTableTypes } from "@/features/tables/services/table.service"
 import { BookingsList } from "@/features/bookings/components/BookingsList"
 import { BookingsPageClient } from "@/features/bookings/components/BookingsPageClient"
 
 export const dynamic = "force-dynamic"
 
 export default async function BookingsPage() {
-  const [bookings, customers, tables] = await Promise.all([
+  const [bookings, customers, tables, tableTypes] = await Promise.all([
     getBookings(),
     getCustomers(),
-    getTables()
+    getTables(),
+    getTableTypes()
   ])
 
   // Process data for the views
-  const mappedBookings = bookings.map(b => ({
+  const mappedBookings = (bookings as any[]).map(b => ({
     id: b.id,
     startTime: b.startTime,
     endTime: b.endTime,
@@ -24,13 +25,17 @@ export default async function BookingsPage() {
       name: b.customer.name,
       phone: b.customer.phone || ""
     },
-    table: {
+    table: b.table ? {
       id: b.table.id,
       name: b.table.name,
       tableType: {
         name: b.table.tableType.name
       }
-    }
+    } : null,
+    tableType: b.tableType ? {
+      id: b.tableType.id,
+      name: b.tableType.name
+    } : null
   }))
 
   const customerList = customers.map(c => ({
@@ -42,6 +47,7 @@ export default async function BookingsPage() {
   const tableList = tables.map(t => ({
     ...t,
     tableType: {
+      id: t.tableType.id,
       name: t.tableType.name
     }
   }))
@@ -58,10 +64,10 @@ export default async function BookingsPage() {
           </p>
         </div>
         
-        <BookingsPageClient customers={customerList} tables={tableList} />
+        <BookingsPageClient customers={customerList} tables={tableList} tableTypes={tableTypes} />
       </div>
 
-      <BookingsList bookings={mappedBookings} />
+      <BookingsList bookings={mappedBookings} tables={tableList} />
     </div>
   )
 }

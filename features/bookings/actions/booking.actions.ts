@@ -47,28 +47,30 @@ export async function createBookingAction(data: CreateBookingFormValues): Promis
     }
   }
 
-  // Check for conflicts (overlapping bookings)
-  const conflicting = await prisma.booking.findFirst({
-    where: {
-      tableId: validated.data.tableId,
-      status: { in: ["PENDING", "CONFIRMED"] },
-      startTime: { lt: requestedEnd },
-      endTime: { gt: requestedStart },
-    }
-  })
+  // Check for conflicts (overlapping bookings) only if a specific table is chosen
+  if (validated.data.tableId) {
+    const conflicting = await prisma.booking.findFirst({
+      where: {
+        tableId: validated.data.tableId,
+        status: { in: ["PENDING", "CONFIRMED"] },
+        startTime: { lt: requestedEnd },
+        endTime: { gt: requestedStart },
+      }
+    })
 
-  if (conflicting) {
-    return {
-      success: false,
-      message: "This table is already booked during the selected time slot.",
+    if (conflicting) {
+      return {
+        success: false,
+        message: "This table is already booked for the selected time",
+      }
     }
   }
 
   try {
     const booking = await bookingService.createBooking(validated.data)
     await logActivity(authSession.user.id, "BOOKING_CREATED", "BOOKING", booking.id, JSON.stringify({ 
-      customer: booking.customer.name, 
-      table: booking.table.name 
+      customer: booking.customerId, 
+      table: booking.tableId || "Unassigned"
     }))
     
     revalidatePath("/bookings")

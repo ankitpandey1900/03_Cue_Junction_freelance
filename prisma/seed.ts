@@ -52,9 +52,9 @@ async function main() {
   // 4. Create Default Cafe Settings
   await prisma.cafeSettings.create({
     data: {
-      cafeName: 'Darshana Cafe',
+      cafeName: 'Cue Junction',
       defaultHourlyRate: 200,
-      receiptFooterText: 'Thank you for visiting Darshana Cafe!',
+      receiptFooterText: 'Thank you for visiting Cue Junction',
       currency: 'INR',
       taxRate: 0,
       acceptCash: true,
@@ -64,47 +64,8 @@ async function main() {
   })
   console.log('Created Default Cafe Settings')
 
-  // 5. Create Default Customers
-  const customer1 = await prisma.customer.create({
-    data: { name: 'Aarav Mehta', phone: '9876543210', totalSpend: 0, loyaltyPoints: 0 }
-  })
-  const customer2 = await prisma.customer.create({
-    data: { name: 'Ananya Iyer', phone: '9876543211', totalSpend: 0, loyaltyPoints: 0 }
-  })
-  console.log('Created Sample Customers')
 
-  // 6. Create Table Types & Tables
-  const poolType = await prisma.tableType.create({
-    data: {
-      name: 'Standard Billiards/Pool',
-      hourlyRate: 200,
-      minimumCharge: 100,
-      fixedRate: 200,
-      fixedDuration: 60,
-      overtimeHourlyRate: 200
-    }
-  })
 
-  const ps5Type = await prisma.tableType.create({
-    data: {
-      name: 'PlayStation 5 Console VIP',
-      hourlyRate: 150,
-      minimumCharge: 75,
-      fixedRate: 150,
-      fixedDuration: 60,
-      overtimeHourlyRate: 150
-    }
-  })
-
-  await prisma.table.createMany({
-    data: [
-      { name: 'Pool Table 1', tableTypeId: poolType.id, status: 'AVAILABLE' },
-      { name: 'Pool Table 2', tableTypeId: poolType.id, status: 'AVAILABLE' },
-      { name: 'PS5 Console A (VIP)', tableTypeId: ps5Type.id, status: 'AVAILABLE' },
-      { name: 'PS5 Console B (VIP)', tableTypeId: ps5Type.id, status: 'AVAILABLE' }
-    ]
-  })
-  console.log('Created Table Types & Tables')
 
   // 7. Seed Cafe Menu
   const menuData = [
