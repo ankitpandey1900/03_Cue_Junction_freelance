@@ -5,14 +5,14 @@ import { Session, Table, TableType, Customer, CustomerOrder, CustomerOrderItem }
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { pauseSessionAction, resumeSessionAction, switchTableAction } from "../actions/session.actions"
+import { pauseSessionAction, resumeSessionAction, switchTableAction, endSessionAction } from "../actions/session.actions"
 import { checkoutCustomerAction } from "@/features/billing/actions/billing.actions"
 import { updateOrderStatusAction } from "@/features/cafe/actions/cafe.actions"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { format } from "date-fns"
-import { Square, Loader2, ShoppingBag, Pause, Play, ArrowRightLeft } from "lucide-react"
+import { Square, Loader2, ShoppingBag, Pause, Play, ArrowRightLeft, StopCircle } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -99,6 +99,22 @@ export function ActiveSessionCard({ session, availableTables = [] }: ActiveSessi
       }
     } catch {
       toast.error("Failed to toggle session state")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleEndOnly = async () => {
+    setLoading(true)
+    try {
+      const res = await endSessionAction(session.id)
+      if (res.success) {
+        toast.success(res.message)
+      } else {
+        toast.error(res.message)
+      }
+    } catch {
+      toast.error("Failed to stop table")
     } finally {
       setLoading(false)
     }
@@ -302,7 +318,7 @@ export function ActiveSessionCard({ session, availableTables = [] }: ActiveSessi
         )}
 
         <div className="grid grid-cols-2 gap-2">
-          <Link href={`/cafe?sessionId=${session.id}`} className="w-full">
+          <Link href={`/cafe?sessionId=${session.id}`} className={session.customer ? "col-span-1" : "col-span-2"}>
             <Button variant="outline" size="sm" className="w-full h-8 text-xs gap-1.5 px-2">
               Add Food
             </Button>
@@ -342,12 +358,24 @@ export function ActiveSessionCard({ session, availableTables = [] }: ActiveSessi
               </>
             )}
           </Button>
+          {session.customer && (
+            <Button
+              onClick={handleEndOnly}
+              disabled={loading}
+              variant="outline"
+              size="sm"
+              className="w-full h-8 text-xs gap-1.5 border-border hover:bg-secondary"
+            >
+              <StopCircle className="h-3 w-3" />
+              Stop Table
+            </Button>
+          )}
           <Button
             onClick={handleEndSession}
             disabled={loading}
             variant="outline"
             size="sm"
-            className="w-full h-8 text-xs gap-1.5 text-destructive hover:text-destructive hover:bg-destructive/10 border-border"
+            className="col-span-2 w-full h-8 text-xs gap-1.5 text-destructive hover:text-destructive hover:bg-destructive/10 border-border"
           >
             {loading ? (
               <>
@@ -357,7 +385,7 @@ export function ActiveSessionCard({ session, availableTables = [] }: ActiveSessi
             ) : (
               <>
                 <Square className="h-3 w-3" />
-                End &amp; Bill
+                Checkout & Bill All
               </>
             )}
           </Button>

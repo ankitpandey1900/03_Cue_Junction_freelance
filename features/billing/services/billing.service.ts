@@ -198,43 +198,32 @@ export async function checkoutCustomer(customerId?: string, sessionId?: string) 
       }
     }
 
-    // Calculate grouped session cost
-    const grouped = new Map<string, { tableType: any, totalMinutes: number, totalExtraCharges: number }>()
+    // Calculate individual session cost
+    let sessionTotal = 0
     for (const session of sessions) {
       const s = session as any
-      const typeId = s.table.tableType.id
+      const type = s.table.tableType
       const end = s.endTime ? s.endTime.getTime() : new Date().getTime()
       let mins = Math.floor((end - s.startTime.getTime()) / 60000)
       mins -= Math.floor(s.totalPauseDurationSeconds / 60)
       if (mins < 1) mins = 1
       
-      if (!grouped.has(typeId)) {
-        grouped.set(typeId, { tableType: s.table.tableType, totalMinutes: 0, totalExtraCharges: 0 })
-      }
-      const group = grouped.get(typeId)!
-      group.totalMinutes += mins
-      group.totalExtraCharges += (s.extraCharges || 0)
-    }
-
-    let sessionTotal = 0
-    for (const group of grouped.values()) {
-      const type = group.tableType
       let cost = 0
       if (type.fixedRate != null && type.fixedDuration != null && type.fixedDuration > 0) {
-        if (group.totalMinutes <= type.fixedDuration) {
+        if (mins <= type.fixedDuration) {
           cost = type.fixedRate
         } else {
-          const extraMinutes = group.totalMinutes - type.fixedDuration
+          const extraMinutes = mins - type.fixedDuration
           const applicableHourlyRate = type.overtimeHourlyRate ?? type.hourlyRate
           cost = type.fixedRate + (extraMinutes / 60) * applicableHourlyRate
         }
       } else {
-        const hours = group.totalMinutes / 60
+        const hours = mins / 60
         cost = hours * type.hourlyRate
       }
       if (cost < type.minimumCharge) cost = type.minimumCharge
       
-      sessionTotal += cost + group.totalExtraCharges
+      sessionTotal += cost + (s.extraCharges || 0)
     }
 
     // 2. Gather unbilled orders

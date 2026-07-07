@@ -60,6 +60,7 @@ type InvoiceViewModel = {
   } | null
   payments: Payment[]
   sessions: {
+    id: string
     startTime: Date | string
     endTime?: Date | string | null
     totalPauseDurationSeconds: number
@@ -371,15 +372,38 @@ export function InvoiceDetailView({
                 Charges Summary
               </p>
 
-              {invoice.sessionTotal > 0 && primarySession && (
-                <div className="flex justify-between items-start text-xs pb-2.5 border-b border-border/30 gap-4">
-                  <div className="space-y-0.5">
-                    <p className="font-semibold text-foreground">Play Session Charge</p>
-                    <p className="text-[10px] text-muted-foreground">
-                      {primarySession.table.tableType.name} ({formatCurrency(primarySession.table.tableType.hourlyRate)}/hr) · Played {playedDuration}
-                    </p>
-                  </div>
-                  <span className="font-mono text-foreground font-semibold">{formatCurrency(invoice.sessionTotal, 2)}</span>
+              {invoice.sessions && invoice.sessions.length > 0 && (
+                <div className="space-y-2 pb-2.5 border-b border-border/30">
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                    Play Sessions
+                  </p>
+                  {invoice.sessions.map(session => {
+                    const end = session.endTime ? new Date(session.endTime).getTime() : new Date().getTime()
+                    const start = new Date(session.startTime).getTime()
+                    let mins = Math.floor((end - start) / 60000)
+                    mins -= Math.floor(session.totalPauseDurationSeconds / 60)
+                    if (mins < 1) mins = 1
+                    const hrs = Math.floor(mins / 60)
+                    const remainingMins = mins % 60
+                    const durationStr = hrs > 0 ? `${hrs}h ${remainingMins}m` : `${remainingMins}m`
+
+                    return (
+                      <div key={session.id} className="flex justify-between items-start text-xs gap-4">
+                        <div className="space-y-0.5">
+                          <p className="font-medium text-foreground">{session.table.name}</p>
+                          <p className="text-[10px] text-muted-foreground">
+                            {session.table.tableType.name} ({formatCurrency(session.table.tableType.hourlyRate)}/hr) · Played {durationStr}
+                          </p>
+                        </div>
+                      </div>
+                    )
+                  })}
+                  {invoice.sessionTotal > 0 && (
+                    <div className="flex justify-between items-start text-xs pt-1.5 border-t border-border/20 mt-1.5">
+                      <div className="font-semibold text-foreground">Total Session Charge</div>
+                      <span className="font-mono text-foreground font-semibold">{formatCurrency(invoice.sessionTotal, 2)}</span>
+                    </div>
+                  )}
                 </div>
               )}
 
