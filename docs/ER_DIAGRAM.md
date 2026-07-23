@@ -18,12 +18,13 @@ erDiagram
     Table ||--o{ Booking : "allocated to"
 
     Session ||--o| Booking : "originates from"
-    Session ||--o| Invoice : "generates"
+    Invoice ||--o{ Session : "aggregates"
     Session ||--o{ CustomerOrder : "collects"
 
     MenuCategory ||--o{ MenuItem : "categorizes"
     MenuItem ||--o{ CustomerOrderItem : "referenced by"
     CustomerOrder ||--o{ CustomerOrderItem : "contains lines"
+    Invoice ||--o{ CustomerOrder : "bills for"
 
     Invoice ||--o{ Payment : "settled by"
 ```
@@ -103,7 +104,9 @@ A security ledger auditing internal staff actions.
   ├──────────────────────┤ ├──────────────────────────────┤
   │  id (PK)             │ │  id (PK)                     │
   │  tableId (FK) String │ │  tableId (FK)               │
-  │  status       String │ │  status                      │
+  │  invoiceId (FK)      │ │  status                      │
+  │  totalPauseDuration  │ │                              │
+  │  status       String │ │                              │
   └──────────────────────┘ └──────────────────────────────┘
 ```
 
@@ -129,7 +132,7 @@ Stores billing state, pause duration counters, and play metrics.
     *   `customer`: `Session 0..* ── 0..1 Customer` (Linked to a patron record via `customerId`, or null if walk-in guest).
     *   `booking`: `Session 0..1 ── 0..1 Booking` (Can originate from a reservation via `bookingId`).
     *   `orders`: `Session 1 ── 0..* CustomerOrder` (Accumulates cafe orders via `sessionId`).
-    *   `invoice`: `Session 1 ── 0..1 Invoice` (Generates a final invoice).
+    *   `invoice`: `Session 0..* ── 1 Invoice` (Included in a final invoice via `invoiceId`).
 
 ---
 
@@ -185,6 +188,7 @@ Individual food and beverage entries.
   ├────────────────────────────────────────────────────────┤
   │  id (PK)                   String (CUID)               │
   │  sessionId (FK, Opt)       String                      │
+  │  invoiceId (FK, Opt)       String                      │
   │  total                     Float                       │
   └────────────────────────────────────────────────────────┘
         │
@@ -204,6 +208,7 @@ Aggregated items mapped to a walk-in check or table session.
 *   **Indexes:** `[createdAt]`, `[status]`, `[sessionId]`
 *   **Relations:**
     *   `session`: `CustomerOrder 0..* ── 0..1 Session` (Attached to an active table via `sessionId`).
+    *   `invoice`: `CustomerOrder 0..* ── 0..1 Invoice` (Included in a final bill via `invoiceId`).
     *   `customer`: `CustomerOrder 0..* ── 0..1 Customer` (Optionally linked to a customer).
     *   `orderItems`: `CustomerOrder 1 ── 0..* CustomerOrderItem` (Contains item detail lines). Cascade delete enforced: removing an order record purges its line items.
 
@@ -214,11 +219,12 @@ Line details housing hard-coded price and name snapshots to protect billing calc
     *   `menuItem`: `CustomerOrderItem 0..* ── 1 MenuItem` (Reference link).
 
 #### Table: `Invoice`
-Central receipt aggregating calculations at session end.
+Central receipt aggregating calculations at session end. Includes detailed breakdowns of cafe vs session costs.
 *   **Soft Delete:** `isArchived` flag — invoices are **never hard-deleted**. Setting `isArchived: true` hides them from list views, reports, and customer profiles while preserving the underlying record. Ensures sequential `invoiceNumber` integrity and full financial audit trails.
 *   **Indexes:** `[createdAt]`, `[status]`, `[isArchived]`, `[customerId]`
 *   **Relations:**
-    *   `session`: `Invoice 0..1 ── 0..1 Session` (Points back to play session via `sessionId`).
+    *   `sessions`: `Invoice 1 ── 1..* Session` (Aggregates multiple play sessions into one final bill).
+    *   `orders`: `Invoice 1 ── 0..* CustomerOrder` (Aggregates direct cafe orders).
     *   `customer`: `Invoice 0..* ── 0..1 Customer` (Linked to a customer profile via `customerId`).
     *   `payments`: `Invoice 1 ── 0..* Payment` (Can be paid in parts). Cascade delete: if invoice is archived, payment logs are preserved.
 

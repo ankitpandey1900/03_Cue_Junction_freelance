@@ -77,12 +77,19 @@ export async function endSession(sessionId: string): Promise<{ session: Session 
 
     const endTime = new Date()
 
+    let additionalPauseSeconds = 0
+    if (session.status === "PAUSED" && session.lastPausedAt) {
+      additionalPauseSeconds = Math.floor((endTime.getTime() - session.lastPausedAt.getTime()) / 1000)
+    }
+
     // Update session
     const updatedSession = await tx.session.update({
       where: { id: sessionId },
       data: {
         endTime,
         status: "COMPLETED",
+        totalPauseDurationSeconds: session.totalPauseDurationSeconds + additionalPauseSeconds,
+        lastPausedAt: null
       }
     })
 
@@ -96,53 +103,62 @@ export async function endSession(sessionId: string): Promise<{ session: Session 
   })
 }
 
-export async function switchTable(sessionId: string, newTableId: string, extraCharges: number = 0): Promise<Session> {
+export async function switchTable(sessionId: string, newTableId: string, extraCharges: number = 0): Promise<Session & { oldTableName?: string }> {
   return await prisma.$transaction(async (tx) => {
     const currentSession = await tx.session.findUnique({
       where: { id: sessionId },
+      include: { table: { include: { tableType: true } } }
     })
 
     if (!currentSession || currentSession.status === "COMPLETED") {
       throw new Error("Cannot switch table for a completed session")
     }
 
-    if (!currentSession.customerId) {
-      throw new Error("Only registered customers can switch tables")
-    }
-
-    const newTable = await tx.table.findUnique({ where: { id: newTableId } })
+    const newTable = await tx.table.findUnique({ 
+      where: { id: newTableId },
+      include: { tableType: true }
+    })
+    
     if (!newTable || newTable.status !== "AVAILABLE") {
       throw new Error("Target table is not available")
     }
 
-    // End current session
-    await tx.session.update({
-      where: { id: sessionId },
-      data: {
-        endTime: new Date(),
-        status: "COMPLETED",
-      }
-    })
+    // 1. Free up old table
     await tx.table.update({
       where: { id: currentSession.tableId },
       data: { status: "AVAILABLE" }
     })
 
-    // Start new session
+    // 2. Occupy new table
     await tx.table.update({
       where: { id: newTableId },
       data: { status: "OCCUPIED" }
     })
 
-    return await tx.session.create({
+    // 3. Calculate rate adjustment for the past duration
+    const end = new Date().getTime()
+    let mins = Math.floor((end - currentSession.startTime.getTime()) / 60000)
+    mins -= Math.floor(currentSession.totalPauseDurationSeconds / 60)
+    if (mins < 1) mins = 1
+    
+    const oldType = currentSession.table.tableType
+    const newType = newTable.tableType
+    const hours = mins / 60
+    
+    // Mathematically offset the past duration cost against the new table's rate
+    // so that at checkout, they are billed precisely the correct amounts for both segments.
+    const adjustment = (hours * oldType.hourlyRate) - (hours * newType.hourlyRate)
+
+    // 4. Update the existing session
+    const updatedSession = await tx.session.update({
+      where: { id: sessionId },
       data: {
         tableId: newTableId,
-        customerId: currentSession.customerId,
-        extraCharges: extraCharges,
-        startTime: new Date(),
-        status: "ACTIVE",
+        extraCharges: currentSession.extraCharges + extraCharges + adjustment
       }
     })
+
+    return { ...updatedSession, oldTableName: currentSession.table.name }
   })
 }
 

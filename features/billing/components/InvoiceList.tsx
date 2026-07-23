@@ -67,6 +67,8 @@ type GroupedData = {
 export function InvoiceList({ invoices }: { invoices: InvoiceListItem[] }) {
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("ALL")
+  const [startDate, setStartDate] = useState("")
+  const [endDate, setEndDate] = useState("")
   
   // Keep track of expanded groups
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set())
@@ -98,9 +100,20 @@ export function InvoiceList({ invoices }: { invoices: InvoiceListItem[] }) {
         invoice.customer?.phone?.includes(searchQuery)
 
       const matchesStatus = statusFilter === "ALL" || invoice.status === statusFilter
-      return matchesSearch && matchesStatus
+      
+      const invoiceDate = new Date(invoice.createdAt)
+      const matchesStartDate = startDate === "" || invoiceDate >= new Date(startDate)
+      
+      let matchesEndDate = true
+      if (endDate !== "") {
+        const end = new Date(endDate)
+        end.setHours(23, 59, 59, 999)
+        matchesEndDate = invoiceDate <= end
+      }
+
+      return matchesSearch && matchesStatus && matchesStartDate && matchesEndDate
     })
-  }, [invoices, normalizedSearch, searchQuery, statusFilter])
+  }, [invoices, normalizedSearch, searchQuery, statusFilter, startDate, endDate])
 
   // If user is searching, expand all nodes automatically
   const isSearching = normalizedSearch.length > 0 || statusFilter !== "ALL"
@@ -190,19 +203,35 @@ export function InvoiceList({ invoices }: { invoices: InvoiceListItem[] }) {
           />
         </div>
 
-        <Select value={statusFilter} onValueChange={(val) => setStatusFilter(val || "ALL")}>
-          <SelectTrigger className="w-full sm:w-[150px] h-9 text-xs bg-background/50 border-border">
-            <SelectValue placeholder="All Statuses" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ALL">All Statuses</SelectItem>
-            <SelectItem value="PAID">Paid</SelectItem>
-            <SelectItem value="UNPAID">Unpaid</SelectItem>
-            <SelectItem value="PARTIAL">Partial</SelectItem>
-            <SelectItem value="CANCELLED">Cancelled</SelectItem>
-            <SelectItem value="REFUNDED">Refunded</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <Input 
+            type="date" 
+            value={startDate} 
+            onChange={(e) => setStartDate(e.target.value)}
+            className="w-full sm:w-[130px] h-9 text-xs"
+            title="Start Date"
+          />
+          <Input 
+            type="date" 
+            value={endDate} 
+            onChange={(e) => setEndDate(e.target.value)}
+            className="w-full sm:w-[130px] h-9 text-xs"
+            title="End Date"
+          />
+          <Select value={statusFilter} onValueChange={(val) => setStatusFilter(val || "ALL")}>
+            <SelectTrigger className="w-full sm:w-[130px] h-9 text-xs bg-background/50 border-border">
+              <SelectValue placeholder="All Statuses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All Statuses</SelectItem>
+              <SelectItem value="PAID">Paid</SelectItem>
+              <SelectItem value="UNPAID">Unpaid</SelectItem>
+              <SelectItem value="PARTIAL">Partial</SelectItem>
+              <SelectItem value="CANCELLED">Cancelled</SelectItem>
+              <SelectItem value="REFUNDED">Refunded</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <div className="rounded-xl border border-border/60 bg-card/20 overflow-hidden shadow-sm">

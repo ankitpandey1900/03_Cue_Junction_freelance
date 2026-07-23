@@ -124,10 +124,12 @@ Represents an active, pausable temporal session on a physical table.
 - `customerId` (String, Optional, Foreign Key -> `Customer.id`): Linked customer (or null if walk-in guest).
 - `tableId` (String, Foreign Key -> `Table.id`).
 - `bookingId` (String, Unique, Optional, Foreign Key -> `Booking.id`).
+- `invoiceId` (String, Optional, Foreign Key -> `Invoice.id`): Linked to the invoice once checked out.
 - `type` (String, Default: `"POSTPAID"`): Billing trigger mode. Options: `"PREPAID" | "POSTPAID"`.
 - `startTime` (DateTime, Default: `now()`): When the session was started.
 - `endTime` (DateTime, Optional): When the session ended.
 - `totalPauseDurationSeconds` (Int, Default: `0`): Total accumulated pause duration, calculated and stored dynamically.
+- `extraCharges` (Float, Default: `0`): Additional flat charges levied on the session.
 - `lastPausedAt` (DateTime, Optional): The exact timestamp when the session was last paused. Used to compute pause delta on resume.
 - `status` (String, Default: `"ACTIVE"`): Current temporal state. Options: `"ACTIVE" | "PAUSED" | "COMPLETED"`.
 
@@ -168,6 +170,7 @@ Represents a group of cafe items ordered by a table or walk-in.
 - `id` (String, Primary Key, CUID).
 - `customerId` (String, Optional, Foreign Key -> `Customer.id`).
 - `sessionId` (String, Optional, Foreign Key -> `Session.id`): If populated, this order is billed directly to the table session at checkout.
+- `invoiceId` (String, Optional, Foreign Key -> `Invoice.id`): If populated, this order is linked to the generated invoice.
 - `status` (String, Default: `"PENDING"`): State of order. Options: `"PENDING" | "PREPARING" | "READY" | "SERVED" | "CANCELLED"`.
 - `subtotal` (Float, Default: `0`).
 - `discount` (Float, Default: `0`).
@@ -191,15 +194,17 @@ The detailed lines of an order. Handles price snapshotting.
 Final financial document capturing total revenue for a billing event.
 - `id` (String, Primary Key, CUID).
 - `invoiceNumber` (Int, Unique, Autoincrement): Human-readable serial invoice number.
-- `sessionId` (String, Unique, Optional, Foreign Key -> `Session.id`): Linked session (if billed from a table).
 - `customerId` (String, Optional, Foreign Key -> `Customer.id`).
-- `sessionTotal` (Float, Default: `0`): Mathematical total computed from table time.
+- `sessionTotal` (Float, Default: `0`): Mathematical total computed from table time across all linked sessions.
 - `cafeTotal` (Float, Default: `0`): Aggregated total of all linked `CustomerOrder` rows.
-- `taxAmount` (Float, Default: `0`): Applicable tax.
-- `discountAmount` (Float, Default: `0`): Applied discount.
+- `taxAmount` (Float, Default: `0`): Applicable tax computed based on cafe settings.
+- `discountAmount` (Float, Default: `0`): Applied discount to the final bill.
 - `grandTotal` (Float): Final payable amount. Calculated as `(sessionTotal + cafeTotal) - discountAmount + taxAmount`.
 - `status` (String, Default: `"UNPAID"`): Options: `"UNPAID" | "PARTIAL" | "PAID" | "REFUNDED" | "CANCELLED"`.
-- `paymentMethod` (String, Optional): Options: `"CASH" | "CARD" | "UPI" | "MIXED"`.
+- `paymentMethod` (String, Optional, Default: `"CASH"`): Options: `"CASH" | "CARD" | "UPI" | "MIXED"`.
+- `dueDate` (DateTime, Optional): Used for deferred billing.
+- `notes` (String, Optional): Staff-entered comments or void reasons.
+- `createdAt` (DateTime, Default: `now()`).
 - `isArchived` (Boolean, Default: `false`): **Soft delete flag.** Setting this to `true` removes the invoice from all list views, reports, and customer profiles while preserving the underlying financial record. Hard deletes are never performed on invoices to maintain accounting integrity and complete audit trails.
 
 #### Model: `Payment`

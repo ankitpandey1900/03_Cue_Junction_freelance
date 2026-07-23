@@ -186,15 +186,27 @@ export async function checkoutCustomer(customerId?: string, sessionId?: string) 
     // End any still ACTIVE or PAUSED sessions
     for (const session of sessions) {
       if (session.status === "ACTIVE" || session.status === "PAUSED") {
+        const endTime = new Date()
+        let additionalPauseSeconds = 0
+        if (session.status === "PAUSED" && session.lastPausedAt) {
+          additionalPauseSeconds = Math.floor((endTime.getTime() - session.lastPausedAt.getTime()) / 1000)
+        }
+        
         await tx.session.update({
           where: { id: session.id },
-          data: { status: "COMPLETED", endTime: new Date() }
+          data: { 
+            status: "COMPLETED", 
+            endTime,
+            totalPauseDurationSeconds: session.totalPauseDurationSeconds + additionalPauseSeconds,
+            lastPausedAt: null
+          }
         })
         await tx.table.update({
           where: { id: session.tableId },
           data: { status: "AVAILABLE" }
         })
-        session.endTime = new Date() // for local calculation
+        session.endTime = endTime // for local calculation
+        session.totalPauseDurationSeconds += additionalPauseSeconds
       }
     }
 
@@ -253,6 +265,27 @@ export async function checkoutCustomer(customerId?: string, sessionId?: string) 
     const grandTotal = roundMoney(subtotal - discountAmount)
 
     // Generate Invoice
+    // 3. Check for any table switches to append to notes
+    const logs = await tx.activityLog.findMany({
+      where: {
+        entityType: "SESSION",
+        entityId: { in: sessions.map(s => s.id) },
+        action: "TABLE_SWITCHED"
+      },
+      orderBy: { createdAt: "asc" }
+    })
+    
+    let switchNotes = ""
+    if (logs.length > 0) {
+      const switches = logs.map(l => {
+        try {
+          const meta = JSON.parse(l.metadata || "{}")
+          return `${meta.oldTable || "Unknown Table"} -> ${meta.newTable || "Unknown Table"}`
+        } catch { return "Table Switched" }
+      }).join(", ")
+      switchNotes = `Table History: ${switches}`
+    }
+
     const invoice = await tx.invoice.create({
       data: {
         customerId: customerId ?? undefined,
@@ -262,6 +295,7 @@ export async function checkoutCustomer(customerId?: string, sessionId?: string) 
         status: "UNPAID",
         taxAmount,
         discountAmount,
+        notes: switchNotes || undefined,
       }
     })
 

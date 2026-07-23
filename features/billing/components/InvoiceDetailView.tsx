@@ -9,6 +9,13 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
   addPaymentAction,
   deleteInvoiceAction,
   updateInvoiceAction,
@@ -120,7 +127,7 @@ export function InvoiceDetailView({
   const [invoice, setInvoice] = useState(initialInvoice)
   const [paymentAmount, setPaymentAmount] = useState<number>(0)
   const [paymentMethod, setPaymentMethod] = useState<string>("UPI")
-  const [receivedById, setReceivedById] = useState<string>("")
+  const [receivedById, setReceivedById] = useState<string>("DEFAULT")
   const [loading, setLoading] = useState(false)
   const [editLoading, setEditLoading] = useState(false)
   const [deleteLoading, setDeleteLoading] = useState(false)
@@ -163,7 +170,8 @@ export function InvoiceDetailView({
 
     setLoading(true)
     try {
-      const response = await addPaymentAction(invoice.id, paymentAmount, paymentMethod, receivedById || undefined)
+      const actualReceivedBy = receivedById === "DEFAULT" ? undefined : (receivedById || undefined)
+      const response = await addPaymentAction(invoice.id, paymentAmount, paymentMethod, actualReceivedBy)
       if (response.success && response.data) {
         const updatedInvoice = response.data
         toast.success(response.message)
@@ -582,16 +590,19 @@ export function InvoiceDetailView({
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs">Received By (Staff)</Label>
-                    <select
-                      value={receivedById}
-                      onChange={(event) => setReceivedById(event.target.value)}
-                      className="w-full h-8 text-xs rounded-md border border-input bg-transparent px-3 py-1"
-                    >
-                      <option value="">Default (Me)</option>
-                      {staffUsers.map((staff) => (
-                        <option key={staff.id} value={staff.id}>{staff.name || "Unknown Staff"}</option>
-                      ))}
-                    </select>
+                    <Select value={receivedById} onValueChange={(val) => setReceivedById(val || "DEFAULT")}>
+                      <SelectTrigger className="w-full h-8 text-xs bg-background">
+                        <SelectValue placeholder="Select Staff" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="DEFAULT">Default (Me)</SelectItem>
+                        {staffUsers.map((staff) => (
+                          <SelectItem key={staff.id} value={staff.id}>
+                            {staff.name || "Unknown Staff"}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <Button type="submit" disabled={loading} size="sm" className="w-full h-8 text-xs gap-1.5 mt-1">
                     <CreditCard className="h-3.5 w-3.5" />

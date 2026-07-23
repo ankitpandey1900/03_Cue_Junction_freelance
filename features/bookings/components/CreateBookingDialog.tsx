@@ -173,7 +173,7 @@ export function CreateBookingDialog({
           <div className="space-y-1.5">
             <Label className="text-sm font-semibold">Select Table</Label>
             <Select value={tableId} onValueChange={(val) => setTableId(val || "")}>
-              <SelectTrigger>
+              <SelectTrigger className="w-full">
                 <SelectValue placeholder="Choose a table...">
                   {tableId.startsWith("type_") 
                     ? `Any ${tableTypes.find(t => t.id === tableId.replace("type_", ""))?.name} Table`

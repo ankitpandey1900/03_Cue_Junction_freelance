@@ -69,8 +69,8 @@ export async function createBookingAction(data: CreateBookingFormValues): Promis
   try {
     const booking = await bookingService.createBooking(validated.data)
     await logActivity(authSession.user.id, "BOOKING_CREATED", "BOOKING", booking.id, JSON.stringify({ 
-      customer: booking.customerId, 
-      table: booking.tableId || "Unassigned"
+      customer: (booking as any).customer.name, 
+      table: (booking as any).table?.name || "Unassigned"
     }))
     
     revalidatePath("/bookings")

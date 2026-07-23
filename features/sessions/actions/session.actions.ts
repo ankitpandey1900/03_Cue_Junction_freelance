@@ -95,17 +95,19 @@ export async function switchTableAction(
 ): Promise<ActionResponse<Session>> {
   try {
     const authSession = await requireSession()
-    const session = await sessionService.switchTable(sessionId, newTableId, extraCharges)
+    const { oldTableName, ...session } = await sessionService.switchTable(sessionId, newTableId, extraCharges)
+    const newTable = await prisma.table.findUnique({ where: { id: newTableId } })
     
     await logActivity(authSession.user.id, "TABLE_SWITCHED", "SESSION", session.id, JSON.stringify({ 
-      newTableId,
+      oldTable: oldTableName || "Table",
+      newTable: newTable?.name || newTableId,
     }))
     
     revalidatePath("/sessions")
     revalidatePath("/tables")
     return {
       success: true,
-      message: `Switched to new table successfully.`,
+      message: `Switched to ${newTable?.name || "new table"} successfully.`,
       data: session,
     }
   } catch (error: unknown) {

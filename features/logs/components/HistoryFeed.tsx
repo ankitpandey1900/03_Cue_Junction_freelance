@@ -52,6 +52,7 @@ interface HistoryFeedProps {
   page: number
   totalPages: number
   currentFilter: HistoryFilter
+  currentEntity?: string
   customFrom?: string
   customTo?: string
 }
@@ -70,6 +71,17 @@ const FILTERS: { value: HistoryFilter; label: string }[] = [
   { value: "month",     label: "Last 30 Days" },
   { value: "all",       label: "All Time" },
 ]
+
+const ENTITY_FILTERS = [
+  { value: "all", label: "All Events" },
+  { value: "session", label: "Sessions" },
+  { value: "invoice", label: "Invoices" },
+  { value: "booking", label: "Bookings" },
+  { value: "customer", label: "Customers" },
+  { value: "user", label: "Staff" },
+  { value: "settings", label: "Settings" },
+]
+
 
 // ─── Action styling & icons ───────────────────────────────────────
 function getActionMeta(action: string): { label: string; icon: React.ReactNode; colorClass: string } {
@@ -142,12 +154,11 @@ function TimelineDialog({ group, open, onClose }: { group: EventGroup | null; op
   const { entityType, entityId, latestItem, items } = group
   const timelineItems = [...items].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
 
-  // If this is a Session Flow, compute summary stats
-  const isSessionFlow = entityType === 'SESSION_FLOW'
-  const sessionStart = isSessionFlow ? timelineItems.find(i => i.action === 'SESSION_STARTED') : null
-  const sessionEnd = isSessionFlow ? timelineItems.find(i => i.action === 'SESSION_ENDED') : null
+  const isSession = entityType === 'SESSION'
+  const isInvoice = entityType === 'INVOICE'
   
-  const invoicePaidEvents = isSessionFlow ? timelineItems.filter(i => i.action === 'INVOICE_PAID') : []
+  const sessionStart = isSession ? timelineItems.find(i => i.action === 'SESSION_STARTED') : null
+  const sessionEnd = isSession ? timelineItems.find(i => i.action === 'SESSION_ENDED') : null
   
   let tableName = "Unknown Table"
   let tableType = ""
@@ -164,12 +175,23 @@ function TimelineDialog({ group, open, onClose }: { group: EventGroup | null; op
     } catch {}
   }
   
+  const invoicePaidEvents = isInvoice ? timelineItems.filter(i => i.action === 'INVOICE_PAID') : []
+  
+  if (isInvoice) {
+    const checkoutEvent = timelineItems.find(i => i.action === 'CHECKOUT_COMPLETED' || i.action === 'INVOICE_UPDATED' || i.action === 'INVOICE_PAID')
+    if (checkoutEvent) {
+      try { 
+        const m = JSON.parse(checkoutEvent.metadata || '{}')
+        if (m.invoiceNumber) invoiceNumber = m.invoiceNumber
+      } catch {}
+    }
+  }
+
   for (const event of invoicePaidEvents) {
     try { 
       const m = JSON.parse(event.metadata || '{}')
       if (m.amount) totalAmountPaid += Number(m.amount)
       if (m.method) paymentMethods.add(m.method)
-      if (m.invoiceNumber) invoiceNumber = m.invoiceNumber
       lastReceiver = event.actorName || event.actorEmail || ""
     } catch {}
   }
@@ -181,10 +203,12 @@ function TimelineDialog({ group, open, onClose }: { group: EventGroup | null; op
       <DialogContent className="max-w-md w-full p-0 overflow-hidden">
         <DialogHeader className="px-5 pt-5 pb-3 border-b border-border/60 bg-muted/20">
           <DialogTitle className="flex flex-col gap-1 text-sm">
-            <span className="font-semibold text-foreground text-base">{isSessionFlow ? `Session Summary: ${tableName}` : latestItem.label}</span>
+            <span className="font-semibold text-foreground text-base">
+              {isSession ? `Session Summary: ${tableName}` : isInvoice ? `Invoice: #${invoiceNumber || 'Pending'}` : latestItem.label}
+            </span>
             <div className="flex items-center gap-2 text-xs font-normal">
               <span className={`${entityColor(entityType)}`}>
-                {isSessionFlow ? 'SESSION' : entityType}
+                {entityType}
               </span>
             </div>
           </DialogTitle>
@@ -192,8 +216,8 @@ function TimelineDialog({ group, open, onClose }: { group: EventGroup | null; op
 
         <div className="px-5 py-4 max-h-[60vh] overflow-y-auto space-y-6">
           {/* Summary Card for Sessions */}
-          {isSessionFlow && (
-            <div className="bg-background border border-border rounded-lg p-5 space-y-5">
+          {isSession && (
+            <div className="bg-background border border-border rounded-lg p-5 space-y-5 shadow-sm">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider mb-1">Played On</p>
@@ -201,12 +225,6 @@ function TimelineDialog({ group, open, onClose }: { group: EventGroup | null; op
                     {tableName} {tableType ? <span className="text-muted-foreground font-normal text-xs">({tableType})</span> : null}
                   </p>
                 </div>
-                {invoiceNumber && (
-                  <div>
-                    <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider mb-1">Invoice</p>
-                    <p className="text-sm font-semibold text-foreground">#{invoiceNumber}</p>
-                  </div>
-                )}
               </div>
               
               <div className="grid grid-cols-2 gap-4">
@@ -219,28 +237,29 @@ function TimelineDialog({ group, open, onClose }: { group: EventGroup | null; op
                 <div>
                   <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider mb-1">Ended</p>
                   <p className="text-sm font-medium text-foreground">
-                    {sessionEnd ? format(new Date(sessionEnd.createdAt), "hh:mm a") : (hasPayments ? 'Checked Out' : 'Active')}
+                    {sessionEnd ? format(new Date(sessionEnd.createdAt), "hh:mm a") : 'Active / Unbilled'}
                   </p>
                 </div>
               </div>
+            </div>
+          )}
 
-              {hasPayments && (
-                <div className="pt-4 border-t border-border/50">
-                  <div className="flex justify-between items-center mb-2">
-                    <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Payment Received</p>
-                    <span className="text-xs font-medium text-muted-foreground">
-                      via {Array.from(paymentMethods).join(", ") || "Unknown"}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-end mt-1">
-                    <p className="text-xl font-bold text-foreground">₹{totalAmountPaid}</p>
-                    <div className="text-right">
-                      <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider mb-0.5">Received by</p>
-                      <p className="text-xs font-medium text-foreground">{lastReceiver}</p>
-                    </div>
-                  </div>
+          {/* Summary Card for Invoices */}
+          {isInvoice && hasPayments && (
+            <div className="bg-background border border-border rounded-lg p-5 space-y-5 shadow-sm">
+              <div className="flex justify-between items-center mb-2">
+                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Payments Received</p>
+                <span className="text-xs font-medium text-muted-foreground">
+                  via {Array.from(paymentMethods).join(", ") || "Unknown"}
+                </span>
+              </div>
+              <div className="flex justify-between items-end mt-1">
+                <p className="text-xl font-bold text-foreground">₹{totalAmountPaid}</p>
+                <div className="text-right">
+                  <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider mb-0.5">Received by</p>
+                  <p className="text-xs font-medium text-foreground">{lastReceiver}</p>
                 </div>
-              )}
+              </div>
             </div>
           )}
 
@@ -257,10 +276,28 @@ function TimelineDialog({ group, open, onClose }: { group: EventGroup | null; op
                 try { if (item.metadata) meta = JSON.parse(item.metadata) } catch { /* ignore */ }
                 
                 // Exclude system IDs from being displayed in the timeline UI
-                const excludedKeys = ['sessionId', 'id', 'invoiceId', 'customerId', 'tableId']
-                const metaEntries = Object.entries(meta).filter(([k, v]) => 
-                  v !== null && v !== undefined && v !== "" && !excludedKeys.includes(k)
-                )
+                const excludedKeys = ['sessionId', 'id', 'invoiceId', 'customerId', 'tableId', 'tableTypeId', 'staffId']
+                
+                const lowerLabel = actionLabel.toLowerCase()
+                const lowerDetail = (item.detail || "").toLowerCase()
+                
+                const formatMetaValue = (k: string, v: any) => {
+                  if (['amount', 'discount', 'extraCharges', 'grandTotal', 'sessionTotal', 'cafeTotal', 'taxAmount'].includes(k)) {
+                    return `₹${v}`
+                  }
+                  return String(v)
+                }
+
+                const metaEntries = Object.entries(meta).filter(([k, v]) => {
+                  if (v === null || v === undefined || v === "") return false
+                  if (excludedKeys.includes(k)) return false
+                  
+                  // Hide redundant text (if the label already says "Shubham", don't show name: Shubham)
+                  const vStr = String(v).toLowerCase()
+                  if (vStr.length > 3 && (lowerLabel.includes(vStr) || lowerDetail.includes(vStr))) return false
+                  
+                  return true
+                })
 
                 return (
                   <div key={item.id} className="relative flex gap-3">
@@ -283,7 +320,7 @@ function TimelineDialog({ group, open, onClose }: { group: EventGroup | null; op
                           {metaEntries.map(([k, v]) => (
                             <div key={k} className="flex items-center justify-between gap-3">
                               <span className="text-[10px] font-medium text-muted-foreground capitalize">{k.replace(/([A-Z])/g, " $1").trim()}</span>
-                              <span className="text-[10px] font-bold text-foreground text-right truncate max-w-[200px]">{String(v)}</span>
+                              <span className="text-[10px] font-bold text-foreground text-right truncate max-w-[200px]">{formatMetaValue(k, v)}</span>
                             </div>
                           ))}
                         </div>
@@ -301,7 +338,7 @@ function TimelineDialog({ group, open, onClose }: { group: EventGroup | null; op
 }
 
 // ─── Main Feed ────────────────────────────────────────────────────
-export function HistoryFeed({ items, total, page, totalPages, currentFilter, customFrom, customTo }: HistoryFeedProps) {
+export function HistoryFeed({ items, total, page, totalPages, currentFilter, currentEntity, customFrom, customTo }: HistoryFeedProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [selectedGroup, setSelectedGroup] = useState<EventGroup | null>(null)
@@ -312,16 +349,12 @@ export function HistoryFeed({ items, total, page, totalPages, currentFilter, cus
     
     // 1. Group items by entityId into EventGroup
     for (const item of items) {
-      let meta: Record<string, any> = {}
-      try { if (item.metadata) meta = JSON.parse(item.metadata) } catch {}
-      
-      const sessionId = meta.sessionId || (item.entityType === 'SESSION' ? item.entityId : null)
-      const key = sessionId ? `FLOW-${sessionId}` : item.entityId ? `${item.entityType}-${item.entityId}` : item.id
+      const key = `${item.entityType}-${item.entityId || item.id}`
 
       if (!map.has(key)) {
         const group: EventGroup = { 
-          entityId: sessionId || item.entityId || item.id, 
-          entityType: sessionId ? 'SESSION_FLOW' : item.entityType, 
+          entityId: item.entityId || item.id, 
+          entityType: item.entityType, 
           items: [], 
           latestItem: item 
         }
@@ -380,6 +413,7 @@ export function HistoryFeed({ items, total, page, totalPages, currentFilter, cus
   }
 
   function setFilter(f: HistoryFilter) { navigate({ filter: f, page: "1", from: "", to: "" }) }
+  function setEntity(e: string) { navigate({ entity: e, page: "1" }) }
   function setPage(p: number) { navigate({ page: String(p) }) }
 
   const toggleNode = (nodeId: string, e: React.MouseEvent) => {
@@ -427,21 +461,42 @@ export function HistoryFeed({ items, total, page, totalPages, currentFilter, cus
 
       {/* Filters */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <Filter className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
-          {FILTERS.map((f) => (
-            <button
-              key={f.value}
-              onClick={() => setFilter(f.value)}
-              className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${
-                currentFilter === f.value
-                  ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                  : "bg-card text-muted-foreground border-border hover:border-primary/50 hover:text-foreground"
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
+        <div className="flex flex-col gap-2">
+          {/* Date Filter */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <Filter className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
+            {FILTERS.map((f) => (
+              <button
+                key={f.value}
+                onClick={() => setFilter(f.value)}
+                className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${
+                  currentFilter === f.value
+                    ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                    : "bg-card text-muted-foreground border-border hover:border-primary/50 hover:text-foreground"
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Entity Filter */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <Tag className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
+            {ENTITY_FILTERS.map((e) => (
+              <button
+                key={e.value}
+                onClick={() => setEntity(e.value)}
+                className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${
+                  (currentEntity || 'all') === e.value
+                    ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                    : "bg-card text-muted-foreground border-border hover:border-primary/50 hover:text-foreground"
+                }`}
+              >
+                {e.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         <form

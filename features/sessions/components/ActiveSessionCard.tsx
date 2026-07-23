@@ -318,29 +318,27 @@ export function ActiveSessionCard({ session, availableTables = [] }: ActiveSessi
         )}
 
         <div className="grid grid-cols-2 gap-2">
-          <Link href={`/cafe?sessionId=${session.id}`} className={session.customer ? "col-span-1" : "col-span-2"}>
+          <Link href={`/cafe?sessionId=${session.id}`} className="col-span-1">
             <Button variant="outline" size="sm" className="w-full h-8 text-xs gap-1.5 px-2">
               Add Food
             </Button>
           </Link>
-          {session.customer && (
-            <Button
-              onClick={() => setSwitchDialogOpen(true)}
-              disabled={loading}
-              variant="outline"
-              size="sm"
-              className="w-full h-8 text-xs gap-1.5 px-2 text-blue-500 hover:text-blue-600 hover:bg-blue-500/10 border-border"
-            >
-              <ArrowRightLeft className="h-3 w-3" />
-              Switch
-            </Button>
-          )}
+          <Button
+            onClick={() => setSwitchDialogOpen(true)}
+            disabled={loading}
+            variant="outline"
+            size="sm"
+            className="w-full h-8 text-xs gap-1.5 px-2 text-blue-500 hover:text-blue-600 hover:bg-blue-500/10 border-border"
+          >
+            <ArrowRightLeft className="h-3 w-3" />
+            Switch
+          </Button>
           <Button
             onClick={handleTogglePause}
             disabled={loading}
             variant="outline"
             size="sm"
-            className={`w-full h-8 text-xs gap-1.5 border-border ${
+            className={`w-full h-8 text-xs gap-1.5 border-border ${!session.customer ? "col-span-2" : ""} ${
               session.status === "PAUSED" 
                 ? "text-emerald-500 hover:text-emerald-600 hover:bg-emerald-500/10" 
                 : "text-amber-500 hover:text-amber-600 hover:bg-amber-500/10"

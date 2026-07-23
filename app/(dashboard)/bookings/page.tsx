@@ -2,7 +2,6 @@ import { getBookings } from "@/features/bookings/services/booking.service"
 import { getCustomers } from "@/features/customers/services/customer.service"
 import { getTables, getTableTypes } from "@/features/tables/services/table.service"
 import { BookingsList } from "@/features/bookings/components/BookingsList"
-import { BookingsPageClient } from "@/features/bookings/components/BookingsPageClient"
 
 export const dynamic = "force-dynamic"
 
@@ -54,20 +53,21 @@ export default async function BookingsPage() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-lg font-semibold tracking-tight text-foreground">
-            Table Bookings
-          </h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Manage advance reservations
-          </p>
-        </div>
-        
-        <BookingsPageClient customers={customerList} tables={tableList} tableTypes={tableTypes} />
+      <div>
+        <h1 className="text-lg font-semibold tracking-tight text-foreground">
+          Table Bookings
+        </h1>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Manage advance reservations
+        </p>
       </div>
 
-      <BookingsList bookings={mappedBookings} tables={tableList} />
+      <BookingsList 
+        bookings={mappedBookings} 
+        tables={tableList} 
+        customers={customerList}
+        tableTypes={tableTypes}
+      />
     </div>
   )
 }

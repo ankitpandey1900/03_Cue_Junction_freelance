@@ -47,7 +47,7 @@ export function getDateRange(filter: HistoryFilter, from?: string, to?: string):
   }
 }
 
-function parseLabel(action: string, entityType: string, metadataStr: string | null): { label: string; detail: string } {
+export function parseLabel(action: string, entityType: string, metadataStr: string | null): { label: string; detail: string } {
   let meta: Record<string, any> = {}
   try {
     if (metadataStr) meta = JSON.parse(metadataStr)
@@ -92,18 +92,23 @@ export async function getHistoryFeed(
   page: number = 1,
   filter: HistoryFilter = "week",
   from?: string,
-  to?: string
+  to?: string,
+  entityFilter?: string
 ): Promise<ActivityResult> {
   const pageSize = 50
   const skip = (page - 1) * pageSize
 
   const dateRange = getDateRange(filter, from, to)
 
-  const where = {
+  const where: any = {
     createdAt: {
       gte: dateRange.from,
       lte: dateRange.to,
     },
+  }
+
+  if (entityFilter && entityFilter !== "all") {
+    where.entityType = entityFilter.toUpperCase()
   }
 
   const [logs, total] = await Promise.all([

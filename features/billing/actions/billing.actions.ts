@@ -23,8 +23,7 @@ export async function addPaymentAction(
   try {
     const authSession = await requireSession()
     const updated = await billingService.addPayment(invoiceId, amount, method, receivedById || authSession.user.id)
-    const session = await prisma.session.findFirst({ where: { invoiceId } })
-    await logActivity(authSession.user.id, "INVOICE_PAID", "INVOICE", invoiceId, JSON.stringify({ amount, method, invoiceNumber: updated.invoiceNumber, sessionId: session?.id }))
+    await logActivity(authSession.user.id, "INVOICE_PAID", "INVOICE", invoiceId, JSON.stringify({ amount, method, invoiceNumber: updated.invoiceNumber }))
     revalidatePath(`/invoices/${invoiceId}`)
     revalidatePath("/invoices")
     return {
@@ -115,7 +114,7 @@ export async function checkoutCustomerAction(
     const authSession = await requireSession()
     const invoice = await billingService.checkoutCustomer(customerId, sessionId)
     
-    await logActivity(authSession.user.id, "CHECKOUT_COMPLETED", "INVOICE", invoice.id, JSON.stringify({ invoiceNumber: invoice.invoiceNumber, sessionId }))
+    await logActivity(authSession.user.id, "CHECKOUT_COMPLETED", "INVOICE", invoice.id, JSON.stringify({ invoiceNumber: invoice.invoiceNumber }))
     
     revalidatePath("/invoices")
     revalidatePath("/sessions")
