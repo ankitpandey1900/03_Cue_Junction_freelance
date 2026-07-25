@@ -29,17 +29,15 @@ export async function getActiveSessions() {
 
 export async function startSession(data: StartSessionFormValues): Promise<Session> {
   return await prisma.$transaction(async (tx) => {
-    // Check if table is available
-    const table = await tx.table.findUnique({ where: { id: data.tableId } })
-    if (!table || table.status !== "AVAILABLE") {
-      throw new Error("Table is not available")
-    }
-
-    // Update table status
-    await tx.table.update({
-      where: { id: data.tableId },
+    // Atomic update to prevent TOCTOU Race Conditions
+    const updateResult = await tx.table.updateMany({
+      where: { id: data.tableId, status: "AVAILABLE" },
       data: { status: "OCCUPIED" }
     })
+
+    if (updateResult.count === 0) {
+      throw new Error("Table is no longer available")
+    }
 
     // Create session
     const session = await tx.session.create({

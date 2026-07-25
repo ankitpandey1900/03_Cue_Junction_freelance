@@ -60,11 +60,14 @@ export async function GET(req: NextRequest) {
 
     const escapeCsv = (str: string) => {
       if (!str) return ""
-      // If string contains comma, quote, or newline, wrap in quotes and escape quotes
-      if (/[",\n]/.test(str)) {
-        return `"${str.replace(/"/g, '""')}"`
+      let safeStr = str
+      if (/^[=+\-@]/.test(safeStr)) {
+        safeStr = "'" + safeStr
       }
-      return str
+      if (/[",\n]/.test(safeStr)) {
+        return `"${safeStr.replace(/"/g, '""')}"`
+      }
+      return safeStr
     }
 
     const csvRows = logs.map(log => {

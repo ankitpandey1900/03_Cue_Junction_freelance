@@ -67,7 +67,7 @@ export async function updateInvoiceAction(
   data: billingService.UpdateInvoiceInput
 ): Promise<ActionResponse<Invoice>> {
   try {
-    const authSession = await requireSession()
+    const authSession = await requireAdmin()
     const updated = await billingService.updateInvoice(invoiceId, data)
     await logActivity(authSession.user.id, "INVOICE_UPDATED", "INVOICE", invoiceId, JSON.stringify({ invoiceNumber: updated.invoiceNumber }))
     revalidatePath(`/invoices/${invoiceId}`)
