@@ -158,9 +158,9 @@ export function MenuItemManager({ menuItems, categories }: MenuItemManagerProps)
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger className="bg-background/50 border-border/50">
-                            <SelectValue placeholder="Select a Category">
-                              {categories.find(c => c.id === field.value)?.name || null}
-                            </SelectValue>
+                            <span className="flex flex-1 text-left truncate">
+                              {field.value ? categories.find(c => c.id === field.value)?.name : "Select a Category"}
+                            </span>
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -275,7 +275,9 @@ export function MenuItemManager({ menuItems, categories }: MenuItemManagerProps)
               </div>
               <Select value={filterCategory} onValueChange={(val) => setFilterCategory(val ?? "All")}>
                 <SelectTrigger className="w-full sm:w-[160px] h-8 bg-background/40 border-border/50 text-xs">
-                  <SelectValue placeholder="All Categories" />
+                  <span className="flex flex-1 text-left truncate">
+                    {filterCategory === "All" ? "All Categories" : categories.find(c => c.id === filterCategory)?.name || "All Categories"}
+                  </span>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="All">All Categories</SelectItem>
