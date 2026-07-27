@@ -6,7 +6,7 @@ import { ScrollText, Download } from "lucide-react"
 export const dynamic = "force-dynamic"
 
 type PageProps = {
-  searchParams: Promise<{ filter?: string; page?: string; from?: string; to?: string; entity?: string }>
+  searchParams: Promise<{ filter?: string; page?: string; from?: string; to?: string; entity?: string; q?: string }>
 }
 
 export default async function LogsPage({ searchParams }: PageProps) {
@@ -18,14 +18,16 @@ export default async function LogsPage({ searchParams }: PageProps) {
   const page = Math.max(1, parseInt(params.page ?? "1", 10) || 1)
   const from = params.from
   const to = params.to
+  const q = params.q
 
-  const result = await getHistoryFeed(page, filter, from, to, entity)
+  const result = await getHistoryFeed(page, filter, from, to, entity, q)
 
   const exportParams = new URLSearchParams()
   if (filter) exportParams.set("filter", filter)
   if (entity) exportParams.set("entity", entity)
   if (from) exportParams.set("from", from)
   if (to) exportParams.set("to", to)
+  if (q) exportParams.set("q", q)
   const exportUrl = `/api/export/history?${exportParams.toString()}`
 
   return (
@@ -58,6 +60,7 @@ export default async function LogsPage({ searchParams }: PageProps) {
         currentEntity={entity}
         customFrom={from}
         customTo={to}
+        currentQuery={q}
       />
     </div>
   )

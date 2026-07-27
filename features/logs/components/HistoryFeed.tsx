@@ -3,8 +3,10 @@
 import { useRouter, useSearchParams } from "next/navigation"
 import { formatInTimeZone } from "date-fns-tz"
 import type { ActivityLogItem, HistoryFilter } from "../services/history.service"
+import { getUnifiedTimelineAction } from "../actions/history.actions"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import {
   Dialog,
   DialogContent,
@@ -20,9 +22,17 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
   ChevronLeft,
   ChevronRight,
   Filter,
+  Search,
   InboxIcon,
   PlayCircle,
   PauseCircle,
@@ -43,8 +53,9 @@ import {
   Hash,
   Tag,
   Info,
+  Loader2,
 } from "lucide-react"
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 
 interface HistoryFeedProps {
   items: ActivityLogItem[]
@@ -55,6 +66,7 @@ interface HistoryFeedProps {
   currentEntity?: string
   customFrom?: string
   customTo?: string
+  currentQuery?: string
 }
 
 export interface EventGroup {
@@ -79,6 +91,7 @@ const ENTITY_FILTERS = [
   { value: "booking", label: "Bookings" },
   { value: "customer", label: "Customers" },
   { value: "user", label: "Staff" },
+  { value: "menu_item", label: "Cafe Inventory" },
   { value: "settings", label: "Settings" },
 ]
 
@@ -129,6 +142,11 @@ function getActionMeta(action: string): { label: string; icon: React.ReactNode; 
   // Settings
   if (action === "SETTINGS_UPDATED")
     return { label: "Settings Updated",  icon: <Settings2    className="h-3.5 w-3.5"/>, colorClass: "bg-orange-500/10 text-orange-600 border-orange-500/25 dark:text-orange-400" }
+  // Cafe Inventory
+  if (action === "ITEM_CREATED" || action === "ITEM_UPDATED" || action === "STOCK_UPDATE")
+    return { label: "Cafe Updated", icon: <Info className="h-3.5 w-3.5"/>, colorClass: "bg-emerald-500/10 text-emerald-600 border-emerald-500/25 dark:text-emerald-400" }
+  if (action === "ITEM_DELETED" || action === "ITEM_DISABLED")
+    return { label: "Cafe Removed", icon: <Trash2 className="h-3.5 w-3.5"/>, colorClass: "bg-rose-500/10 text-rose-600 border-rose-500/25 dark:text-rose-400" }
   // Fallback
   return { label: action.replace(/_/g, " "), icon: <LogIn className="h-3.5 w-3.5"/>, colorClass: "bg-muted text-muted-foreground border-border" }
 }
@@ -143,16 +161,35 @@ function entityColor(entityType: string) {
     USER:     "text-rose-600 dark:text-rose-400",
     SETTINGS: "text-orange-600 dark:text-orange-400",
     SESSION_FLOW: "text-blue-600 dark:text-blue-400",
+    MENU_ITEM: "text-emerald-600 dark:text-emerald-400",
   }
   return map[entityType] ?? "text-muted-foreground"
 }
 
 // ─── Timeline Dialog ────────────────────────────────────────────────
 function TimelineDialog({ group, open, onClose }: { group: EventGroup | null; open: boolean; onClose: () => void }) {
+  const [unifiedItems, setUnifiedItems] = useState<any[] | null>(null)
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (open && group) {
+      setLoading(true)
+      getUnifiedTimelineAction(group.entityId, group.entityType).then((data) => {
+        setUnifiedItems(data)
+        setLoading(false)
+      })
+    } else {
+      setUnifiedItems(null)
+    }
+  }, [open, group])
+
   if (!group) return null
 
   const { entityType, entityId, latestItem, items } = group
-  const timelineItems = [...items].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+  
+  // Use unified items if available, otherwise fallback to local group items immediately for fast UI
+  const rawItems = unifiedItems || items
+  const timelineItems = [...rawItems].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
 
   const isSession = entityType === 'SESSION'
   const isInvoice = entityType === 'INVOICE'
@@ -177,12 +214,17 @@ function TimelineDialog({ group, open, onClose }: { group: EventGroup | null; op
   
   const invoicePaidEvents = isInvoice ? timelineItems.filter(i => i.action === 'INVOICE_PAID') : []
   
+  let invoiceTableNames = ""
+  let invoiceCustomerName = ""
+  
   if (isInvoice) {
     const checkoutEvent = timelineItems.find(i => i.action === 'CHECKOUT_COMPLETED' || i.action === 'INVOICE_UPDATED' || i.action === 'INVOICE_PAID')
     if (checkoutEvent) {
       try { 
         const m = JSON.parse(checkoutEvent.metadata || '{}')
         if (m.invoiceNumber) invoiceNumber = m.invoiceNumber
+        if (m.tableNames) invoiceTableNames = m.tableNames
+        if (m.customerName) invoiceCustomerName = m.customerName
       } catch {}
     }
   }
@@ -204,9 +246,14 @@ function TimelineDialog({ group, open, onClose }: { group: EventGroup | null; op
         <DialogHeader className="px-5 pt-5 pb-3 border-b border-border/60 bg-muted/20">
           <DialogTitle className="flex flex-col gap-1 text-sm">
             <span className="font-semibold text-foreground text-base">
-              {isSession ? `Session Summary: ${tableName}` : isInvoice ? `Invoice: #${invoiceNumber || 'Pending'}` : latestItem.label}
+              {isSession 
+                ? `Session Summary: ${tableName}` 
+                : isInvoice 
+                  ? `Invoice: #${invoiceNumber || 'Pending'}${invoiceCustomerName ? ` - ${invoiceCustomerName}` : ''}${invoiceTableNames ? ` (${invoiceTableNames})` : ''}` 
+                  : latestItem.label}
             </span>
-            <div className="flex items-center gap-2 text-xs font-normal">
+            {loading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground ml-2 inline-block" />}
+            <div className="flex items-center gap-2 mt-1.5 text-xs text-muted-foreground">
               <span className={`${entityColor(entityType)}`}>
                 {entityType}
               </span>
@@ -276,7 +323,7 @@ function TimelineDialog({ group, open, onClose }: { group: EventGroup | null; op
                 try { if (item.metadata) meta = JSON.parse(item.metadata) } catch { /* ignore */ }
                 
                 // Exclude system IDs from being displayed in the timeline UI
-                const excludedKeys = ['sessionId', 'id', 'invoiceId', 'customerId', 'tableId', 'tableTypeId', 'staffId']
+                const excludedKeys = ['sessionId', 'id', 'invoiceId', 'customerId', 'tableId', 'tableTypeId', 'staffId', 'tableNames', 'customerName', 'invoiceNumber', 'amount', 'method']
                 
                 const lowerLabel = actionLabel.toLowerCase()
                 const lowerDetail = (item.detail || "").toLowerCase()
@@ -338,72 +385,34 @@ function TimelineDialog({ group, open, onClose }: { group: EventGroup | null; op
 }
 
 // ─── Main Feed ────────────────────────────────────────────────────
-export function HistoryFeed({ items, total, page, totalPages, currentFilter, currentEntity, customFrom, customTo }: HistoryFeedProps) {
+export function HistoryFeed({ items, total, page, totalPages, currentFilter, currentEntity, customFrom, customTo, currentQuery }: HistoryFeedProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const [searchQuery, setSearchQuery] = useState(currentQuery || "")
   const [selectedGroup, setSelectedGroup] = useState<EventGroup | null>(null)
-  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set(["TODAY", "YESTERDAY"]))
   
-  const groupedHistory = useMemo(() => {
-    const map = new Map<string, EventGroup>()
-    
-    // 1. Group items by entityId into EventGroup
+  const getEventGroup = (entityId: string, entityType: string): EventGroup => {
+    const groupItems = items.filter(i => (i.entityId || i.id) === entityId && i.entityType === entityType)
+    return {
+      entityId,
+      entityType,
+      items: groupItems,
+      latestItem: groupItems[0] || items[0] // Since items is sorted desc
+    }
+  }
+
+  // Simplify the flat feed by only showing the LATEST action per entity group
+  const feedItems = useMemo(() => {
+    const map = new Map<string, ActivityLogItem>()
+    const result: ActivityLogItem[] = []
     for (const item of items) {
       const key = `${item.entityType}-${item.entityId || item.id}`
-
       if (!map.has(key)) {
-        const group: EventGroup = { 
-          entityId: item.entityId || item.id, 
-          entityType: item.entityType, 
-          items: [], 
-          latestItem: item 
-        }
-        map.set(key, group)
-      }
-      map.get(key)!.items.push(item)
-    }
-
-    const groups = Array.from(map.values()).sort(
-      (a, b) => new Date(b.latestItem.createdAt).getTime() - new Date(a.latestItem.createdAt).getTime()
-    )
-
-    // 2. Group into Month > Date
-    type HistoryNode = {
-      [monthStr: string]: {
-        count: number;
-        dates: {
-          [dateLabel: string]: {
-            count: number;
-            groups: EventGroup[];
-          }
-        }
+        map.set(key, item)
+        result.push(item) // keep original order (newest first)
       }
     }
-
-    const data: HistoryNode = {}
-    const todayStr = formatInTimeZone(new Date(), "Asia/Kolkata", "yyyy-MM-dd")
-    const yesterdayDate = new Date()
-    yesterdayDate.setDate(yesterdayDate.getDate() - 1)
-    const yesterdayStr = formatInTimeZone(yesterdayDate, "Asia/Kolkata", "yyyy-MM-dd")
-
-    for (const g of groups) {
-      const d = new Date(g.latestItem.createdAt)
-      const monthStr = formatInTimeZone(d, "Asia/Kolkata", "MMMM yyyy").toUpperCase()
-      
-      const exactDateStr = formatInTimeZone(d, "Asia/Kolkata", "yyyy-MM-dd")
-      let dateLabel = formatInTimeZone(d, "Asia/Kolkata", "EEE, MMM d, yyyy").toUpperCase()
-      if (exactDateStr === todayStr) dateLabel = "TODAY"
-      else if (exactDateStr === yesterdayStr) dateLabel = "YESTERDAY"
-
-      if (!data[monthStr]) data[monthStr] = { count: 0, dates: {} }
-      if (!data[monthStr].dates[dateLabel]) data[monthStr].dates[dateLabel] = { count: 0, groups: [] }
-      
-      data[monthStr].count += 1
-      data[monthStr].dates[dateLabel].count += 1
-      data[monthStr].dates[dateLabel].groups.push(g)
-    }
-
-    return data
+    return result
   }, [items])
 
   function navigate(params: Record<string, string>) {
@@ -416,107 +425,87 @@ export function HistoryFeed({ items, total, page, totalPages, currentFilter, cur
   function setEntity(e: string) { navigate({ entity: e, page: "1" }) }
   function setPage(p: number) { navigate({ page: String(p) }) }
 
-  const toggleNode = (nodeId: string, e: React.MouseEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setExpandedNodes((prev) => {
-      const next = new Set(prev)
-      if (next.has(nodeId)) next.delete(nodeId)
-      else next.add(nodeId)
-      return next
-    })
-  }
-
-  // If a custom filter is active, auto-expand everything for visibility
-  const isCustomFilter = currentFilter !== "all" && currentFilter !== "month" && currentFilter !== "week"
-  const isExpanded = (nodeId: string) => isCustomFilter || expandedNodes.has(nodeId)
-
-  const renderGroupHeader = (nodeId: string, label: string, count: number, depth: number) => {
-    const expanded = isExpanded(nodeId)
-    return (
-      <div 
-        onClick={(e) => toggleNode(nodeId, e)} 
-        className={`flex items-center justify-between p-3 cursor-pointer hover:bg-accent/40 border-b border-border/40 transition-colors select-none ${
-          depth === 0 ? "bg-card/50" : "bg-card/30 pl-6"
-        }`}
-      >
-        <div className="flex items-center gap-3">
-          <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${expanded ? "rotate-90" : ""}`} />
-          <span className={`uppercase tracking-wider ${
-            depth === 0 ? "font-bold text-base text-foreground" : "font-bold text-sm text-foreground"
-          }`}>
-            {label}
-          </span>
-        </div>
-        <Badge className="bg-primary/10 text-primary border-primary/20 text-xs font-mono px-2 py-0.5">
-          {count} Events
-        </Badge>
-      </div>
-    )
-  }
-
   return (
     <div className="space-y-4 pb-10">
       <TimelineDialog group={selectedGroup} open={!!selectedGroup} onClose={() => setSelectedGroup(null)} />
 
-      {/* Filters */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex flex-col gap-2">
-          {/* Date Filter */}
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <Filter className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
-            {FILTERS.map((f) => (
-              <button
-                key={f.value}
-                onClick={() => setFilter(f.value)}
-                className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${
-                  currentFilter === f.value
-                    ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                    : "bg-card text-muted-foreground border-border hover:border-primary/50 hover:text-foreground"
-                }`}
-              >
-                {f.label}
-              </button>
-            ))}
+      {/* Filters Bar */}
+      <div className="bg-card border border-border/50 rounded-xl p-4 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
+          {/* Entity Filter */}
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <Tag className="h-4 w-4 text-muted-foreground shrink-0 hidden sm:block" />
+            <Select value={currentEntity || "all"} onValueChange={(val) => val && setEntity(val)}>
+              <SelectTrigger className="w-full sm:w-[180px] h-9 text-xs">
+                <SelectValue placeholder="Filter by type">
+                  {ENTITY_FILTERS.find(e => e.value === (currentEntity || 'all'))?.label || "Filter by type"}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {ENTITY_FILTERS.map((e) => (
+                  <SelectItem key={e.value} value={e.value} className="text-xs">{e.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
-          {/* Entity Filter */}
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <Tag className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
-            {ENTITY_FILTERS.map((e) => (
-              <button
-                key={e.value}
-                onClick={() => setEntity(e.value)}
-                className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${
-                  (currentEntity || 'all') === e.value
-                    ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                    : "bg-card text-muted-foreground border-border hover:border-primary/50 hover:text-foreground"
-                }`}
-              >
-                {e.label}
-              </button>
-            ))}
+          {/* Date Filter */}
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <Filter className="h-4 w-4 text-muted-foreground shrink-0 hidden sm:block" />
+            <Select value={currentFilter} onValueChange={(val) => val && setFilter(val as HistoryFilter)}>
+              <SelectTrigger className="w-full sm:w-[180px] h-9 text-xs">
+                <SelectValue placeholder="Filter by date">
+                  {FILTERS.find(f => f.value === currentFilter)?.label || "Custom Range..."}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {FILTERS.map((f) => (
+                  <SelectItem key={f.value} value={f.value} className="text-xs">{f.label}</SelectItem>
+                ))}
+                <SelectItem value="custom" className="text-xs">Custom Range...</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
-        <form
-          className="flex items-center gap-2 flex-wrap"
+        {/* Search Bar */}
+        <form 
+          className="relative flex-1 w-full lg:max-w-xs"
           onSubmit={(e) => {
             e.preventDefault()
-            const fd = new FormData(e.currentTarget)
-            navigate({ filter: "custom", from: fd.get("from") as string, to: fd.get("to") as string, page: "1" })
+            navigate({ q: searchQuery, page: "1", filter: "all" })
           }}
         >
-          <input name="from" type="date" defaultValue={customFrom}
-            className="h-8 rounded-md border border-border bg-background px-2 text-xs outline-none focus:border-primary" />
-          <span className="text-xs text-muted-foreground">to</span>
-          <input name="to" type="date" defaultValue={customTo}
-            className="h-8 rounded-md border border-border bg-background px-2 text-xs outline-none focus:border-primary" />
-          <button type="submit"
-            className="h-8 px-3 rounded-md bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition">
-            Apply
-          </button>
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            placeholder="Search history... (Press Enter)"
+            className="pl-9 h-9 text-xs w-full"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
         </form>
+
+        {/* Custom Date Form (Visible only if filter is custom) */}
+        {currentFilter === "custom" && (
+          <form
+            className="flex items-center gap-2 w-full lg:w-auto"
+            onSubmit={(e) => {
+              e.preventDefault()
+              const fd = new FormData(e.currentTarget)
+              navigate({ filter: "custom", from: fd.get("from") as string, to: fd.get("to") as string, page: "1" })
+            }}
+          >
+            <Input name="from" type="date" defaultValue={customFrom}
+              className="h-9 w-full sm:w-[130px] text-xs" title="Start Date" />
+            <span className="text-xs text-muted-foreground font-medium px-1">to</span>
+            <Input name="to" type="date" defaultValue={customTo}
+              className="h-9 w-full sm:w-[130px] text-xs" title="End Date" />
+            <Button type="submit" size="sm" className="h-9 px-4 text-xs">
+              Apply
+            </Button>
+          </form>
+        )}
       </div>
 
       {/* Count */}
@@ -534,88 +523,91 @@ export function HistoryFeed({ items, total, page, totalPages, currentFilter, cur
         </div>
       )}
 
-      {/* Hierarchical Accordion Feed */}
-      {items.length > 0 && (
-        <div className="rounded-xl border border-border/60 bg-card/20 overflow-hidden shadow-sm">
-          {Object.entries(groupedHistory).map(([monthStr, monthData]) => (
-            <div key={monthStr} className="group-month">
-              {renderGroupHeader(monthStr, monthStr, monthData.count, 0)}
-
-              {isExpanded(monthStr) && (
-                <div className="animate-in slide-in-from-top-2 duration-200">
-                  {Object.entries(monthData.dates).map(([dateLabel, dateData]) => {
-                    const dateId = `${monthStr}-${dateLabel}`
-                    return (
-                      <div key={dateId} className="group-date border-l-2 border-border/30 ml-2">
-                        {renderGroupHeader(dateId, dateLabel, dateData.count, 1)}
-
-                        {isExpanded(dateId) && (
-                          <div className="animate-in slide-in-from-top-2 duration-200 bg-background/50 divide-y divide-border/40">
-                            {dateData.groups.map((group) => {
-                              const item = group.latestItem
-                              const count = group.items.length
-                              const { label: actionLabel, icon: actionIcon, colorClass } = getActionMeta(item.action)
-                              
-                              return (
-                                <div
-                                  key={group.entityId}
-                                  className="flex flex-col sm:flex-row sm:items-center justify-between p-4 hover:bg-accent/40 transition-colors pl-8 sm:pl-12 gap-3 cursor-pointer"
-                                  onClick={() => setSelectedGroup(group)}
-                                >
-                                  <div className="flex items-center gap-4">
-                                    <div className={`hidden sm:flex h-10 w-10 rounded-full items-center justify-center shrink-0 border shadow-sm ${colorClass}`}>
-                                      {actionIcon}
-                                    </div>
-                                    <div>
-                                      <div className="flex items-center gap-2">
-                                        <p className="text-sm font-semibold text-foreground truncate max-w-[200px] sm:max-w-md">
-                                          {item.label}
-                                        </p>
-                                        <span className="text-[10px] text-muted-foreground font-mono whitespace-nowrap">
-                                          {formatInTimeZone(new Date(item.createdAt), "Asia/Kolkata", "hh:mm a")}
-                                        </span>
-                                      </div>
-                                      <div className="flex flex-wrap items-center gap-2 mt-1">
-                                        <Badge variant="secondary" className={`text-[9px] px-1.5 py-0 uppercase tracking-wider font-bold ${colorClass}`}>
-                                          {actionLabel}
-                                        </Badge>
-                                        {item.detail && (
-                                          <span className="text-[10px] text-muted-foreground truncate max-w-[180px]">
-                                            {item.detail}
-                                          </span>
-                                        )}
-                                        {count > 1 && (
-                                          <span className="text-[10px] font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded-sm">
-                                            +{count - 1} event{count > 2 ? 's' : ''}
-                                          </span>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </div>
-                                  
-                                  <div className="flex items-center gap-2 self-start sm:self-center mt-2 sm:mt-0 ml-12 sm:ml-0">
-                                    <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                                      <span className="text-[10px] font-bold text-primary">
-                                        {(item.actorName || item.actorEmail)[0]?.toUpperCase()}
-                                      </span>
-                                    </div>
-                                    <span className="text-xs font-medium text-foreground truncate max-w-[120px]">
-                                      {item.actorName || item.actorEmail}
-                                    </span>
-                                    <Eye className="h-4 w-4 text-muted-foreground hover:text-primary transition-colors ml-2" />
-                                  </div>
-                                </div>
-                              )
-                            })}
+      {/* Flat Data Table */}
+      {feedItems.length > 0 && (
+        <div className="rounded-md border bg-card overflow-hidden">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader className="bg-muted/50">
+                <TableRow>
+                  <TableHead className="whitespace-nowrap font-semibold">Timestamp</TableHead>
+                  <TableHead className="whitespace-nowrap font-semibold">Entity</TableHead>
+                  <TableHead className="whitespace-nowrap font-semibold">Action</TableHead>
+                  <TableHead className="whitespace-nowrap font-semibold hidden md:table-cell">Details</TableHead>
+                  <TableHead className="whitespace-nowrap font-semibold">Staff</TableHead>
+                  <TableHead className="whitespace-nowrap font-semibold text-right">Sequence</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {feedItems.map((item) => {
+                  const { label: actionLabel, icon: actionIcon, colorClass } = getActionMeta(item.action)
+                  return (
+                    <TableRow key={item.id} className="hover:bg-accent/40 transition-colors">
+                      <TableCell className="whitespace-nowrap">
+                        <div className="flex flex-col">
+                          <span className="text-sm font-medium text-foreground">
+                            {formatInTimeZone(new Date(item.createdAt), "Asia/Kolkata", "MMM dd, yyyy")}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground font-mono">
+                            {formatInTimeZone(new Date(item.createdAt), "Asia/Kolkata", "hh:mm a")}
+                          </span>
+                        </div>
+                      </TableCell>
+                      
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <div className={`hidden sm:flex h-8 w-8 rounded-full items-center justify-center shrink-0 border shadow-sm ${colorClass}`}>
+                            {actionIcon}
                           </div>
+                          <span className="text-sm font-semibold text-foreground max-w-[150px] sm:max-w-xs md:max-w-md truncate">
+                            {item.label}
+                          </span>
+                        </div>
+                      </TableCell>
+                      
+                      <TableCell className="whitespace-nowrap">
+                        <Badge variant="secondary" className={`text-[10px] px-2 py-0.5 uppercase tracking-wider font-bold ${colorClass}`}>
+                          {actionLabel}
+                        </Badge>
+                      </TableCell>
+
+                      <TableCell className="hidden md:table-cell max-w-[250px] truncate">
+                        {item.detail ? (
+                          <span className="text-xs text-muted-foreground">{item.detail}</span>
+                        ) : (
+                          <span className="text-xs text-muted-foreground/50">-</span>
                         )}
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-          ))}
+                      </TableCell>
+
+                      <TableCell className="whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                            <span className="text-[10px] font-bold text-primary">
+                              {(item.actorName || item.actorEmail)[0]?.toUpperCase()}
+                            </span>
+                          </div>
+                          <span className="text-xs font-medium text-foreground">
+                            {item.actorName || item.actorEmail}
+                          </span>
+                        </div>
+                      </TableCell>
+
+                      <TableCell className="text-right">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8 text-muted-foreground hover:text-primary"
+                          onClick={() => setSelectedGroup(getEventGroup(item.entityId || item.id, item.entityType))}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+          </div>
         </div>
       )}
 

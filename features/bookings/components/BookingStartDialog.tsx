@@ -148,11 +148,9 @@ export function BookingStartDialog({
             </p>
             <Input
               type="number"
-              min={0}
-              placeholder="0"
-              value={extraCharges || ""}
+              value={extraCharges === 0 ? "" : extraCharges}
               onChange={(e) =>
-                setExtraCharges(Math.max(0, Number(e.target.value)))
+                setExtraCharges(Math.max(0, e.target.value === "" ? 0 : Number(e.target.value)))
               }
               className="h-9 text-sm bg-background/60"
             />

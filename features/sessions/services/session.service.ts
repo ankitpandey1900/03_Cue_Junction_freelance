@@ -22,7 +22,7 @@ export async function getActiveSessions() {
       }
     },
     orderBy: {
-      startTime: 'desc'
+      startTime: 'asc'
     }
   })
 }

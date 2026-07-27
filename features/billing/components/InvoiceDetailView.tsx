@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { formatInTimeZone } from "date-fns-tz"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -139,6 +139,14 @@ export function InvoiceDetailView({
     paymentMethod: initialInvoice.paymentMethod || "CASH",
     notes: initialInvoice.notes || "",
   })
+
+  useEffect(() => {
+    setEditValues(current => ({
+      ...current,
+      status: invoice.status,
+      paymentMethod: invoice.paymentMethod || current.paymentMethod
+    }))
+  }, [invoice.status, invoice.paymentMethod])
 
   if (!invoice) {
     return (
@@ -474,8 +482,8 @@ export function InvoiceDetailView({
                     <Label className="text-xs">Session Total</Label>
                     <Input
                       type="number"
-                      value={editValues.sessionTotal}
-                      onChange={(event) => setEditValues((current) => ({ ...current, sessionTotal: Number(event.target.value) }))}
+                      value={editValues.sessionTotal === 0 ? "" : editValues.sessionTotal}
+                      onChange={(event) => setEditValues((current) => ({ ...current, sessionTotal: event.target.value === "" ? 0 : Number(event.target.value) }))}
                       className="h-8 text-xs font-mono"
                     />
                   </div>
@@ -483,8 +491,8 @@ export function InvoiceDetailView({
                     <Label className="text-xs">Cafe Total</Label>
                     <Input
                       type="number"
-                      value={editValues.cafeTotal}
-                      onChange={(event) => setEditValues((current) => ({ ...current, cafeTotal: Number(event.target.value) }))}
+                      value={editValues.cafeTotal === 0 ? "" : editValues.cafeTotal}
+                      onChange={(event) => setEditValues((current) => ({ ...current, cafeTotal: event.target.value === "" ? 0 : Number(event.target.value) }))}
                       className="h-8 text-xs font-mono"
                     />
                   </div>
@@ -493,8 +501,8 @@ export function InvoiceDetailView({
                   <Label className="text-xs">Discount</Label>
                   <Input
                     type="number"
-                    value={editValues.discountAmount}
-                    onChange={(event) => setEditValues((current) => ({ ...current, discountAmount: Math.max(0, Number(event.target.value)) }))}
+                    value={editValues.discountAmount === 0 ? "" : editValues.discountAmount}
+                    onChange={(event) => setEditValues((current) => ({ ...current, discountAmount: Math.max(0, event.target.value === "" ? 0 : Number(event.target.value)) }))}
                     className="h-8 text-xs font-mono"
                   />
                 </div>

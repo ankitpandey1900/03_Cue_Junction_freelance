@@ -79,8 +79,10 @@ export function parseLabel(action: string, entityType: string, metadataStr: stri
         detail: meta.invoiceNumber ? `Invoice #${meta.invoiceNumber}` : "",
       }
     case "INVOICE":
+      const tName = meta.tableNames ? ` (${meta.tableNames})` : ""
+      const cName = meta.customerName ? ` - ${meta.customerName}` : ""
       return {
-        label: meta.invoiceNumber ? `Invoice #${meta.invoiceNumber}` : "Invoice",
+        label: meta.invoiceNumber ? `Invoice #${meta.invoiceNumber}${cName}${tName}` : `Invoice${cName}${tName}`,
         detail: meta.amount ? `₹${meta.amount} via ${meta.method ?? ""}` : "",
       }
     case "CUSTOMER":
@@ -102,6 +104,13 @@ export function parseLabel(action: string, entityType: string, metadataStr: stri
           : "Booking",
         detail: meta.status ?? "",
       }
+    case "MENU_ITEM":
+      return {
+        label: meta.itemName ? `Cafe Item: ${meta.itemName}` : "Cafe Inventory",
+        detail: meta.change !== undefined 
+          ? `Stock changed by ${meta.change > 0 ? '+' : ''}${meta.change}` 
+          : "",
+      }
     default:
       return { label: entityType, detail: "" }
   }
@@ -112,7 +121,8 @@ export async function getHistoryFeed(
   filter: HistoryFilter = "week",
   from?: string,
   to?: string,
-  entityFilter?: string
+  entityFilter?: string,
+  searchQuery?: string
 ): Promise<ActivityResult> {
   const pageSize = 50
   const skip = (page - 1) * pageSize
@@ -130,12 +140,55 @@ export async function getHistoryFeed(
     where.entityType = entityFilter.toUpperCase()
   }
 
+  const q = searchQuery?.trim().toLowerCase()
+
+  if (q) {
+    // In-memory search for accurate matching on computed labels
+    const allLogs = await prisma.activityLog.findMany({
+      where,
+      include: { user: { select: { name: true, email: true } } } as any,
+      orderBy: { createdAt: "desc" },
+      take: 2000,
+    })
+
+    const parsedItems: ActivityLogItem[] = (allLogs as any[]).map((log) => {
+      const { label, detail } = parseLabel(log.action, log.entityType, log.metadata)
+      return {
+        id: log.id,
+        action: log.action,
+        entityType: log.entityType,
+        entityId: log.entityId,
+        metadata: log.metadata,
+        createdAt: log.createdAt,
+        actorName: log.user?.name ?? null,
+        actorEmail: log.user?.email ?? "",
+        label,
+        detail,
+      }
+    })
+
+    const filteredItems = parsedItems.filter(item => 
+      item.label.toLowerCase().includes(q) ||
+      (item.detail && item.detail.toLowerCase().includes(q)) ||
+      (item.actorName && item.actorName.toLowerCase().includes(q)) ||
+      (item.actorEmail && item.actorEmail.toLowerCase().includes(q)) ||
+      item.action.toLowerCase().includes(q)
+    )
+
+    return {
+      items: filteredItems.slice(skip, skip + pageSize),
+      total: filteredItems.length,
+      page,
+      pageSize,
+      totalPages: Math.max(1, Math.ceil(filteredItems.length / pageSize)),
+    }
+  }
+
+  // Standard fast pagination without search
   const [logs, total] = await Promise.all([
     prisma.activityLog.findMany({
       where,
-      include: {
-        user: { select: { name: true, email: true } },
-      } as any,
+      include: { user: { select: { name: true, email: true } } } as any,
       orderBy: { createdAt: "desc" },
       skip,
       take: pageSize,

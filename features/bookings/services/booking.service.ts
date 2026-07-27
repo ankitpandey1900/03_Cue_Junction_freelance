@@ -13,7 +13,7 @@ export async function getBookings() {
       tableType: true
     } as any,
     orderBy: {
-      startTime: "asc"
+      startTime: "desc"
     }
   })
 }

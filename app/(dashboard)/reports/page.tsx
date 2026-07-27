@@ -1,18 +1,19 @@
 import { getDashboardStats, parseReportRange } from "@/features/reports/services/report.service"
 import { DashboardAnalytics } from "@/features/reports/components/DashboardAnalytics"
+import { ReportFilters } from "@/features/reports/components/ReportFilters"
 import { requireAdminPage } from "@/lib/action-auth"
 
 export const dynamic = "force-dynamic"
 
 type ReportsPageProps = {
-  searchParams: Promise<{ from?: string; to?: string }>
+  searchParams: Promise<{ from?: string; to?: string; preset?: string }>
 }
 
 export default async function ReportsPage({ searchParams }: ReportsPageProps) {
   await requireAdminPage()
 
   const params = await searchParams
-  const range = parseReportRange(params.from, params.to)
+  const range = parseReportRange(params.from, params.to, params.preset)
   const stats = await getDashboardStats(range)
 
   return (
@@ -27,29 +28,28 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
           </p>
         </div>
 
-        <form className="grid grid-cols-2 gap-2 rounded-lg border border-border bg-card p-2 sm:flex sm:items-end" action="/reports">
-          <label className="space-y-1">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">From</span>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <ReportFilters />
+          
+          <form className="flex items-center gap-2 flex-wrap" action="/reports">
             <input
               type="date"
               name="from"
               defaultValue={stats.range.from}
-              className="h-8 rounded-md border border-border bg-background px-2 text-xs text-foreground outline-none"
+              className="h-8 rounded-md border border-border bg-background px-2 text-xs outline-none focus:border-primary"
             />
-          </label>
-          <label className="space-y-1">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">To</span>
+            <span className="text-xs text-muted-foreground">to</span>
             <input
               type="date"
               name="to"
               defaultValue={stats.range.to}
-              className="h-8 rounded-md border border-border bg-background px-2 text-xs text-foreground outline-none"
+              className="h-8 rounded-md border border-border bg-background px-2 text-xs outline-none focus:border-primary"
             />
-          </label>
-          <button className="col-span-2 h-8 rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground sm:col-span-1">
-            Apply Filter
-          </button>
-        </form>
+            <button className="h-8 px-3 rounded-md bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition">
+              Apply
+            </button>
+          </form>
+        </div>
       </div>
 
       <DashboardAnalytics stats={stats} />

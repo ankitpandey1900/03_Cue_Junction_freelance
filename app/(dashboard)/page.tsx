@@ -151,35 +151,39 @@ export default async function DashboardIndex() {
           </CardContent>
         </Card>
 
-        <Card className="bg-card/40 border-border/50">
-          <CardContent className="p-3 sm:p-4">
-            <div className="flex justify-between items-start mb-2">
-              <p className="text-[9px] sm:text-[10px] text-muted-foreground uppercase font-bold tracking-wider leading-tight w-[70%]">Bookings</p>
-              <div className="h-7 w-7 sm:h-9 sm:w-9 rounded-md bg-blue-500/10 flex items-center justify-center shrink-0">
-                <CalendarCheck className="h-3.5 w-3.5 sm:h-4.5 sm:w-4.5 text-blue-500" />
+        <Link href="/bookings?date=UPCOMING" className="block transition-transform hover:scale-[1.02] active:scale-95">
+          <Card className="bg-card/40 border-border/50 h-full cursor-pointer hover:border-blue-500/30 transition-colors shadow-sm">
+            <CardContent className="p-3 sm:p-4 flex flex-col h-full">
+              <div className="flex justify-between items-start mb-2">
+                <p className="text-[9px] sm:text-[10px] text-muted-foreground uppercase font-bold tracking-wider leading-tight w-[70%]">Bookings</p>
+                <div className="h-7 w-7 sm:h-9 sm:w-9 rounded-md bg-blue-500/10 flex items-center justify-center shrink-0">
+                  <CalendarCheck className="h-3.5 w-3.5 sm:h-4.5 sm:w-4.5 text-blue-500" />
+                </div>
               </div>
-            </div>
-            <p className="text-xl sm:text-2xl font-bold font-mono text-blue-500">
-              {upcomingBookingsCount}
-            </p>
-            <p className="text-[9px] sm:text-[11px] text-muted-foreground mt-0.5 truncate">{customerCount} total customers</p>
-            
-            {upcomingBookings.length > 0 && (
-              <div className="space-y-1.5 mt-3 pt-3 border-t border-border/50">
-                {(upcomingBookings as any[]).map((b) => (
-                  <div key={b.id} className="flex justify-between items-center text-[10px]">
-                    <span className="font-medium text-foreground truncate max-w-[60%]">{b.customer.name}</span>
-                    <span className="text-muted-foreground whitespace-nowrap">
-                      {formatInTimeZone(new Date(b.startTime), "Asia/Kolkata", "h:mm a")}
-                      {" • "}
-                      {b.table ? b.table.tableType.name : b.tableType?.name || "Any"}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+              <p className="text-xl sm:text-2xl font-bold font-mono text-blue-500">
+                {upcomingBookingsCount}
+              </p>
+              <p className="text-[9px] sm:text-[11px] text-muted-foreground mt-0.5 truncate">{customerCount} total customers</p>
+              
+              <div className="flex-1" />
+              
+              {upcomingBookings.length > 0 && (
+                <div className="space-y-1.5 mt-3 pt-3 border-t border-border/50">
+                  {(upcomingBookings as any[]).map((b) => (
+                    <div key={b.id} className="flex justify-between items-center text-[10px]">
+                      <span className="font-medium text-foreground truncate max-w-[60%]">{b.customer.name}</span>
+                      <span className="text-muted-foreground whitespace-nowrap">
+                        {formatInTimeZone(new Date(b.startTime), "Asia/Kolkata", "h:mm a")}
+                        {" • "}
+                        {b.table ? b.table.tableType.name : b.tableType?.name || "Any"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </Link>
       </div>
 
       {unpaidInvoicesCount > 0 && (

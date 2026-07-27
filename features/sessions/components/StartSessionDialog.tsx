@@ -155,9 +155,8 @@ export function StartSessionDialog({
             <Label className="text-xs font-semibold">Extra Setup / Controller Charge (₹)</Label>
             <Input
               type="number"
-              placeholder="0"
-              value={extraCharges || ""}
-              onChange={(e) => setExtraCharges(Math.max(0, Number(e.target.value)))}
+              value={extraCharges === 0 ? "" : extraCharges}
+              onChange={(e) => setExtraCharges(Math.max(0, e.target.value === "" ? 0 : Number(e.target.value)))}
               className="h-9 text-sm"
             />
           </div>

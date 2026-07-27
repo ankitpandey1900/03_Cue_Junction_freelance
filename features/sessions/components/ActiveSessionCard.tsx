@@ -209,7 +209,7 @@ export function ActiveSessionCard({ session, availableTables = [] }: ActiveSessi
   }
 
   const cafeTotal = session.orders?.reduce((sum, order) => sum + order.total, 0) || 0
-  const grandTotal = estimatedCost + cafeTotal
+  const grandTotal = estimatedCost + cafeTotal + (session.extraCharges || 0)
 
   return (
     <>
@@ -272,6 +272,12 @@ export function ActiveSessionCard({ session, availableTables = [] }: ActiveSessi
             <div className="flex justify-between text-muted-foreground">
               <span>Cafe Orders</span>
               <span className="font-mono text-foreground">₹{cafeTotal.toFixed(0)}</span>
+            </div>
+          )}
+          {(session.extraCharges || 0) > 0 && (
+            <div className="flex justify-between text-muted-foreground">
+              <span>Extra Charges</span>
+              <span className="font-mono text-foreground">₹{session.extraCharges.toFixed(0)}</span>
             </div>
           )}
           <div className="flex justify-between font-semibold text-foreground pt-1 border-t border-dashed border-border/30">
@@ -425,9 +431,8 @@ export function ActiveSessionCard({ session, availableTables = [] }: ActiveSessi
             <Label className="text-sm font-semibold">Extra Controller / Setup Charge (₹)</Label>
             <Input
               type="number"
-              placeholder="0"
-              value={switchExtraCharges || ""}
-              onChange={(e) => setSwitchExtraCharges(Math.max(0, Number(e.target.value)))}
+              value={switchExtraCharges === 0 ? "" : switchExtraCharges}
+              onChange={(e) => setSwitchExtraCharges(Math.max(0, e.target.value === "" ? 0 : Number(e.target.value)))}
             />
             <p className="text-xs text-muted-foreground">
               Only add if there is a new setup cost for the switched table.

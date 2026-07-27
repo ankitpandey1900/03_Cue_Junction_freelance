@@ -8,8 +8,9 @@ import { ActionResponse } from "./category.actions"
 import { requireAdmin } from "@/lib/action-auth"
 
 export async function createMenuItemAction(data: MenuItemFormValues): Promise<ActionResponse> {
+  let session;
   try {
-    await requireAdmin()
+    session = await requireAdmin()
   } catch (error) {
     return { success: false, message: formatActionError(error, "Unauthorized: Admins only") }
   }
@@ -24,7 +25,7 @@ export async function createMenuItemAction(data: MenuItemFormValues): Promise<Ac
   }
 
   try {
-    const item = await itemService.createMenuItem(validated.data)
+    const item = await itemService.createMenuItem(validated.data, session.user.id)
     revalidatePath("/cafe")
     revalidatePath("/cafe/manage")
     return {
@@ -41,8 +42,9 @@ export async function createMenuItemAction(data: MenuItemFormValues): Promise<Ac
 }
 
 export async function updateMenuItemAction(id: string, data: MenuItemFormValues): Promise<ActionResponse> {
+  let session;
   try {
-    await requireAdmin()
+    session = await requireAdmin()
   } catch (error) {
     return { success: false, message: formatActionError(error, "Unauthorized: Admins only") }
   }
@@ -57,7 +59,7 @@ export async function updateMenuItemAction(id: string, data: MenuItemFormValues)
   }
 
   try {
-    const item = await itemService.updateMenuItem(id, validated.data)
+    const item = await itemService.updateMenuItem(id, validated.data, session.user.id)
     revalidatePath("/cafe")
     revalidatePath("/cafe/manage")
     return {
@@ -97,14 +99,15 @@ export async function toggleItemAvailabilityAction(id: string, isAvailable: bool
 }
 
 export async function deleteMenuItemAction(id: string): Promise<ActionResponse> {
+  let session;
   try {
-    await requireAdmin()
+    session = await requireAdmin()
   } catch (error) {
     return { success: false, message: formatActionError(error, "Unauthorized: Admins only") }
   }
 
   try {
-    const res = await itemService.deleteMenuItem(id)
+    const res = await itemService.deleteMenuItem(id, session.user.id)
     revalidatePath("/cafe")
     revalidatePath("/cafe/manage")
     
@@ -120,6 +123,40 @@ export async function deleteMenuItemAction(id: string): Promise<ActionResponse> 
     return {
       success: false,
       message: formatActionError(error, "Failed to delete menu item"),
+    }
+  }
+}
+
+export async function updateStockAction(id: string, quantityChange: number, note: string): Promise<ActionResponse> {
+  let session;
+  try {
+    session = await requireAdmin()
+  } catch (error) {
+    return { success: false, message: formatActionError(error, "Unauthorized: Admins only") }
+  }
+
+  if (typeof quantityChange !== 'number' || isNaN(quantityChange)) {
+    return { success: false, message: "Invalid quantity change" }
+  }
+  if (!note || note.trim().length === 0) {
+    return { success: false, message: "A note or reason is required" }
+  }
+
+  try {
+    const item = await itemService.updateItemStock(id, quantityChange, note.trim(), session.user.id)
+    revalidatePath("/cafe")
+    revalidatePath("/cafe/manage")
+    revalidatePath("/cafe/history")
+    
+    return {
+      success: true,
+      message: `Stock updated successfully. New stock: ${item.stock}`,
+      data: item,
+    }
+  } catch (error: unknown) {
+    return {
+      success: false,
+      message: formatActionError(error, "Failed to update item stock"),
     }
   }
 }

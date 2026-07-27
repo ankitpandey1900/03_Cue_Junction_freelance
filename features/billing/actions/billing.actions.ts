@@ -23,7 +23,8 @@ export async function addPaymentAction(
   try {
     const authSession = await requireSession()
     const updated = await billingService.addPayment(invoiceId, amount, method, receivedById || authSession.user.id)
-    await logActivity(authSession.user.id, "INVOICE_PAID", "INVOICE", invoiceId, JSON.stringify({ amount, method, invoiceNumber: updated.invoiceNumber }))
+    const { tableNames, customerName } = await getInvoiceDetails(invoiceId)
+    await logActivity(authSession.user.id, "INVOICE_PAID", "INVOICE", invoiceId, JSON.stringify({ amount, method, invoiceNumber: updated.invoiceNumber, tableNames, customerName }))
     revalidatePath(`/invoices/${invoiceId}`)
     revalidatePath("/invoices")
     return {
@@ -69,7 +70,7 @@ export async function updateInvoiceAction(
   try {
     const authSession = await requireAdmin()
     const updated = await billingService.updateInvoice(invoiceId, data)
-    await logActivity(authSession.user.id, "INVOICE_UPDATED", "INVOICE", invoiceId, JSON.stringify({ invoiceNumber: updated.invoiceNumber }))
+    await logActivity(authSession.user.id, "INVOICE_UPDATED", "INVOICE", invoiceId, JSON.stringify({ invoiceNumber: updated.invoiceNumber, ...data }))
     revalidatePath(`/invoices/${invoiceId}`)
     revalidatePath("/invoices")
     revalidatePath("/reports")
@@ -113,8 +114,9 @@ export async function checkoutCustomerAction(
   try {
     const authSession = await requireSession()
     const invoice = await billingService.checkoutCustomer(customerId, sessionId)
+    const { tableNames, customerName } = await getInvoiceDetails(invoice.id)
     
-    await logActivity(authSession.user.id, "CHECKOUT_COMPLETED", "INVOICE", invoice.id, JSON.stringify({ invoiceNumber: invoice.invoiceNumber }))
+    await logActivity(authSession.user.id, "CHECKOUT_COMPLETED", "INVOICE", invoice.id, JSON.stringify({ invoiceNumber: invoice.invoiceNumber, tableNames, customerName }))
     
     revalidatePath("/invoices")
     revalidatePath("/sessions")
@@ -132,4 +134,19 @@ export async function checkoutCustomerAction(
       message: formatActionError(error, "Failed to checkout"),
     }
   }
+}
+
+async function getInvoiceDetails(invoiceId: string) {
+  const invoice = await prisma.invoice.findUnique({ 
+    where: { id: invoiceId }, 
+    include: { customer: true, sessions: { include: { table: true } }, orders: true } 
+  })
+  if (!invoice) return { tableNames: "", customerName: "" }
+  
+  let tableNames = Array.from(new Set(invoice.sessions.map(s => s.table.name))).join(", ")
+  if (!tableNames && invoice.orders.length > 0) {
+    tableNames = "Cafe Order"
+  }
+  
+  return { tableNames, customerName: invoice.customer?.name || "" }
 }

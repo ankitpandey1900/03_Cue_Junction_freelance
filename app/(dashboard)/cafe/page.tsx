@@ -5,7 +5,7 @@ import { auth } from "@/lib/auth"
 import { headers } from "next/headers"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { FolderKanban, Utensils } from "lucide-react"
+import { FolderKanban, Utensils, History } from "lucide-react"
 
 export const dynamic = "force-dynamic"
 
@@ -38,7 +38,13 @@ export default async function CafePage({
         </div>
 
         {isAdmin && (
-          <div className="flex items-center gap-2.5">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <Link href="/cafe/history">
+              <Button variant="outline" size="sm" className="gap-2 border-border/50 text-xs font-semibold h-9 rounded-lg text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/10 border-emerald-500/30">
+                <History className="h-4 w-4" />
+                Inventory History
+              </Button>
+            </Link>
             <Link href="/cafe/manage/categories">
               <Button variant="outline" size="sm" className="gap-2 border-border/50 text-xs font-semibold h-9 rounded-lg">
                 <FolderKanban className="h-4 w-4" />

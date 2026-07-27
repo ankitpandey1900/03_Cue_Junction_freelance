@@ -2,6 +2,7 @@
 import { formatInTimeZone } from "date-fns-tz"
 
 import { useState, useMemo } from "react"
+import { useSearchParams } from "next/navigation"
 import { isToday, isFuture, isPast } from "date-fns"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -93,10 +94,12 @@ export function BookingsList({
   const [startDialogBooking, setStartDialogBooking] = useState<BookingViewModel | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
 
+  const searchParams = useSearchParams()
+  
   // Filters
   const [searchQuery, setSearchQuery] = useState("")
-  const [statusFilter, setStatusFilter] = useState("ALL")
-  const [dateFilter, setDateFilter] = useState("ALL")
+  const [statusFilter, setStatusFilter] = useState(searchParams.get("status") || "ALL")
+  const [dateFilter, setDateFilter] = useState(searchParams.get("date") || "ALL")
 
   const handleStatusChange = async (id: string, status: string) => {
     setLoadingId(id)
@@ -211,9 +214,9 @@ export function BookingsList({
         <Table>
           <TableHeader>
           <TableRow className="hover:bg-transparent">
-            <TableHead className="pl-4 w-[250px]">Customer</TableHead>
+            <TableHead className="pl-4 w-[200px]">Date & Time</TableHead>
+            <TableHead className="w-[250px]">Customer</TableHead>
             <TableHead>Table</TableHead>
-            <TableHead>Time</TableHead>
             <TableHead>Status</TableHead>
             <TableHead className="text-right pr-4">Actions</TableHead>
           </TableRow>
@@ -232,6 +235,16 @@ export function BookingsList({
             filteredBookings.map((b) => (
               <TableRow key={b.id} className="group transition-colors hover:bg-muted/50">
                 <TableCell className="pl-4">
+                  <div className="flex flex-col">
+                    <span className="font-medium text-foreground">
+                      {formatInTimeZone(new Date(b.startTime), "Asia/Kolkata", "MMM dd, yyyy")}
+                    </span>
+                    <span className="text-[11px] text-muted-foreground">
+                      {formatInTimeZone(new Date(b.startTime), "Asia/Kolkata", "h:mm a")} &ndash; {formatInTimeZone(new Date(b.endTime), "Asia/Kolkata", "h:mm a")}
+                    </span>
+                  </div>
+                </TableCell>
+                <TableCell>
                   <div className="flex items-center gap-3">
                     <div className="h-9 w-9 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-semibold shrink-0">
                       {getInitials(b.customer.name)}
@@ -249,16 +262,6 @@ export function BookingsList({
                     </span>
                     <span className="text-[11px] text-muted-foreground">
                       {b.table ? b.table.tableType.name : "Unassigned"}
-                    </span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex flex-col">
-                    <span className="font-medium text-foreground">
-                      {formatInTimeZone(new Date(b.startTime), "Asia/Kolkata", "MMM dd, yyyy")}
-                    </span>
-                    <span className="text-[11px] text-muted-foreground">
-                      {formatInTimeZone(new Date(b.startTime), "Asia/Kolkata", "h:mm a")} &ndash; {formatInTimeZone(new Date(b.endTime), "Asia/Kolkata", "h:mm a")}
                     </span>
                   </div>
                 </TableCell>

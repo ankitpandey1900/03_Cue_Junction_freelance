@@ -28,6 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Trash2, Plus, Edit2, Search, X, Check, Flame } from "lucide-react"
+import { UpdateStockModal } from "./UpdateStockModal"
 
 interface MenuItemManagerProps {
   menuItems: (MenuItem & { category: { name: string } })[]
@@ -190,7 +191,6 @@ export function MenuItemManager({ menuItems, categories }: MenuItemManagerProps)
                   )}
                 />
 
-                <div className="grid grid-cols-2 gap-3">
                   <FormField
                     control={createForm.control}
                     name="basePrice"
@@ -209,26 +209,6 @@ export function MenuItemManager({ menuItems, categories }: MenuItemManagerProps)
                       </FormItem>
                     )}
                   />
-                  <FormField
-                    control={createForm.control}
-                    name="stock"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Inventory Stock (Qty)</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            className="bg-background/50 border-border/50 text-xs font-mono"
-                            {...field}
-                            onChange={(e) => field.onChange(Number(e.target.value))}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
                 <FormField
                   control={createForm.control}
                   name="description"
@@ -334,24 +314,6 @@ export function MenuItemManager({ menuItems, categories }: MenuItemManagerProps)
                               </FormItem>
                             )}
                           />
-                          <FormField
-                            control={editForm.control}
-                            name="stock"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="text-[10px] uppercase font-bold text-muted-foreground">Stock (Qty)</FormLabel>
-                                <FormControl>
-                                  <Input
-                                    type="number"
-                                    className="h-8 text-xs bg-background/50 border-border/50 font-mono"
-                                    {...field}
-                                    onChange={(e) => field.onChange(Number(e.target.value))}
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
                           <div className="flex gap-2 justify-end">
                             <Button type="submit" size="icon" className="h-8 w-8 bg-emerald-600 hover:bg-emerald-700" disabled={loading === item.id}>
                               <Check className="h-3.5 w-3.5" />
@@ -408,6 +370,11 @@ export function MenuItemManager({ menuItems, categories }: MenuItemManagerProps)
                               className="data-[state=checked]:bg-emerald-500"
                             />
                           </div>
+                          <UpdateStockModal 
+                            itemId={item.id} 
+                            itemName={item.name} 
+                            currentStock={item.stock} 
+                          />
                           <Button
                             variant="ghost"
                             size="icon"

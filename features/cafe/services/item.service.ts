@@ -39,7 +39,25 @@ export async function getItemById(id: string): Promise<MenuItem | null> {
   })
 }
 
-export async function createMenuItem(data: MenuItemFormValues): Promise<MenuItem> {
+async function logInventoryActivity(
+  tx: any,
+  userId: string,
+  action: string,
+  itemId: string,
+  metadata: any
+) {
+  await tx.activityLog.create({
+    data: {
+      userId,
+      action,
+      entityType: "MENU_ITEM",
+      entityId: itemId,
+      metadata: JSON.stringify(metadata)
+    }
+  })
+}
+
+export async function createMenuItem(data: MenuItemFormValues, userId?: string): Promise<MenuItem> {
   const slug = slugify(data.name)
   const sku = data.sku || `SKU-${slug.toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`
   
@@ -55,25 +73,36 @@ export async function createMenuItem(data: MenuItemFormValues): Promise<MenuItem
     throw new Error(`Item with name "${data.name}" already exists`)
   }
 
-  return await prisma.menuItem.create({
-    data: {
-      categoryId: data.categoryId,
-      sku,
-      name: data.name,
-      slug,
-      description: data.description ?? null,
-      basePrice: data.basePrice,
-      imageUrl: data.imageUrl ?? null,
-      preparationTime: data.preparationTime,
-      displayOrder: data.displayOrder,
-      isAvailable: data.isAvailable,
-      isFeatured: data.isFeatured,
-      stock: data.stock ?? 0,
+  return await prisma.$transaction(async (tx) => {
+    const item = await tx.menuItem.create({
+      data: {
+        categoryId: data.categoryId,
+        sku,
+        name: data.name,
+        slug,
+        description: data.description ?? null,
+        basePrice: data.basePrice,
+        imageUrl: data.imageUrl ?? null,
+        preparationTime: data.preparationTime,
+        displayOrder: data.displayOrder,
+        isAvailable: data.isAvailable,
+        isFeatured: data.isFeatured,
+        stock: data.stock ?? 0,
+      }
+    })
+
+    if (userId) {
+      await logInventoryActivity(tx, userId, "ITEM_CREATED", item.id, { 
+        itemName: item.name, 
+        initialStock: item.stock 
+      })
     }
+
+    return item
   })
 }
 
-export async function updateMenuItem(id: string, data: MenuItemFormValues): Promise<MenuItem> {
+export async function updateMenuItem(id: string, data: MenuItemFormValues, userId?: string): Promise<MenuItem> {
   const slug = slugify(data.name)
   
   // If editing and no SKU is passed, keep original or auto-generate
@@ -92,22 +121,33 @@ export async function updateMenuItem(id: string, data: MenuItemFormValues): Prom
     throw new Error(`Another item with name "${data.name}" already exists`)
   }
 
-  return await prisma.menuItem.update({
-    where: { id },
-    data: {
-      categoryId: data.categoryId,
-      sku,
-      name: data.name,
-      slug,
-      description: data.description ?? null,
-      basePrice: data.basePrice,
-      imageUrl: data.imageUrl ?? null,
-      preparationTime: data.preparationTime,
-      displayOrder: data.displayOrder,
-      isAvailable: data.isAvailable,
-      isFeatured: data.isFeatured,
-      stock: data.stock ?? 0,
+  return await prisma.$transaction(async (tx) => {
+    const updated = await tx.menuItem.update({
+      where: { id },
+      data: {
+        categoryId: data.categoryId,
+        sku,
+        name: data.name,
+        slug,
+        description: data.description ?? null,
+        basePrice: data.basePrice,
+        imageUrl: data.imageUrl ?? null,
+        preparationTime: data.preparationTime,
+        displayOrder: data.displayOrder,
+        isAvailable: data.isAvailable,
+        isFeatured: data.isFeatured,
+        stock: data.stock ?? 0,
+      }
+    })
+
+    if (userId) {
+      await logInventoryActivity(tx, userId, "ITEM_UPDATED", id, { 
+        itemName: updated.name,
+        note: "Item details updated"
+      })
     }
+
+    return updated
   })
 }
 
@@ -118,21 +158,64 @@ export async function toggleItemAvailability(id: string, isAvailable: boolean): 
   })
 }
 
-export async function deleteMenuItem(id: string): Promise<MenuItem> {
-  // Check if item has been ordered before
-  const orderCount = await prisma.customerOrderItem.count({
-    where: { menuItemId: id }
-  })
+export async function deleteMenuItem(id: string, userId?: string): Promise<MenuItem> {
+  return await prisma.$transaction(async (tx) => {
+    const item = await tx.menuItem.findUnique({ where: { id } })
+    if (!item) throw new Error("Item not found")
 
-  if (orderCount > 0) {
-    // If it has order history, soft-delete by setting availability to false
-    return await prisma.menuItem.update({
-      where: { id },
-      data: { isAvailable: false }
+    // Check if item has been ordered before
+    const orderCount = await tx.customerOrderItem.count({
+      where: { menuItemId: id }
     })
-  }
 
-  return await prisma.menuItem.delete({
-    where: { id }
+    let deletedItem
+    if (orderCount > 0) {
+      // If it has order history, soft-delete by setting availability to false
+      deletedItem = await tx.menuItem.update({
+        where: { id },
+        data: { isAvailable: false }
+      })
+      if (userId) {
+        await logInventoryActivity(tx, userId, "ITEM_DISABLED", id, { 
+          itemName: item.name, 
+          note: "Item soft-deleted (historical orders exist)" 
+        })
+      }
+    } else {
+      deletedItem = await tx.menuItem.delete({
+        where: { id }
+      })
+      if (userId) {
+        await logInventoryActivity(tx, userId, "ITEM_DELETED", id, { 
+          itemName: item.name 
+        })
+      }
+    }
+
+    return deletedItem
+  })
+}
+
+export async function updateItemStock(id: string, quantityChange: number, note: string, userId: string): Promise<MenuItem> {
+  return await prisma.$transaction(async (tx) => {
+    const item = await tx.menuItem.findUnique({ where: { id } })
+    if (!item) throw new Error("Item not found")
+
+    const newStock = Math.max(0, item.stock + quantityChange)
+    
+    const updated = await tx.menuItem.update({
+      where: { id },
+      data: { stock: newStock }
+    })
+
+    await logInventoryActivity(tx, userId, "STOCK_UPDATE", id, {
+      itemName: item.name,
+      previousStock: item.stock,
+      newStock: newStock,
+      change: quantityChange,
+      note: note
+    })
+
+    return updated
   })
 }

@@ -10,17 +10,27 @@ export type ReportDateRange = {
 }
 
 export function getDefaultReportRange(): ReportDateRange {
-  // Always calculate "today" according to the cafe's physical timezone, never UTC
   const todayStr = formatInTimeZone(new Date(), SYSTEM_TIMEZONE, "yyyy-MM-dd")
-  const to = fromZonedTime(`${todayStr}T00:00:00`, SYSTEM_TIMEZONE)
+  const todayStart = fromZonedTime(`${todayStr}T00:00:00`, SYSTEM_TIMEZONE)
   
   return {
-    from: subDays(to, 29),
-    to,
+    from: todayStart, // Changed default to today based on user's request
+    to: todayStart,
   }
 }
 
-export function parseReportRange(from?: string, to?: string): ReportDateRange {
+export function parseReportRange(from?: string, to?: string, preset?: string): ReportDateRange {
+  const todayStr = formatInTimeZone(new Date(), SYSTEM_TIMEZONE, "yyyy-MM-dd")
+  const todayStart = fromZonedTime(`${todayStr}T00:00:00`, SYSTEM_TIMEZONE)
+  
+  if (preset && !from && !to) {
+    if (preset === "today") return { from: todayStart, to: todayStart }
+    if (preset === "yesterday") return { from: subDays(todayStart, 1), to: subDays(todayStart, 1) }
+    if (preset === "week") return { from: subDays(todayStart, 6), to: todayStart }
+    if (preset === "month") return { from: subDays(todayStart, 29), to: todayStart }
+    if (preset === "all") return { from: new Date(2020, 0, 1), to: todayStart }
+  }
+
   const fallback = getDefaultReportRange()
   
   let safeFrom = fallback.from
@@ -85,15 +95,24 @@ export async function getDashboardStats(range: ReportDateRange = getDefaultRepor
   const cafeRevenue = billableInvoices.reduce((sum, invoice) => sum + invoice.cafeTotal, 0)
   const discountTotal = billableInvoices.reduce((sum, invoice) => sum + invoice.discountAmount, 0)
 
-  const openInvoices = billableInvoices.filter((invoice) => invoice.status === "UNPAID" || invoice.status === "PARTIAL")
-  const pendingCollection = openInvoices.reduce((sum, invoice: any) => {
-    const paid = invoice.payments.reduce((paymentSum: number, payment: any) => paymentSum + payment.amount, 0)
-    return sum + Math.max(0, invoice.grandTotal - paid)
-  }, 0)
+  let pendingCollection = 0
+  let paidInvoicesCount = 0
+  let partialInvoicesCount = 0
+  let unpaidInvoicesCount = 0
 
-  const paidInvoicesCount = billableInvoices.filter((invoice) => invoice.status === "PAID").length
-  const partialInvoicesCount = billableInvoices.filter((invoice) => invoice.status === "PARTIAL").length
-  const unpaidInvoicesCount = billableInvoices.filter((invoice) => invoice.status === "UNPAID").length
+  billableInvoices.forEach((invoice: any) => {
+    const paid = invoice.payments.reduce((paymentSum: number, payment: any) => paymentSum + payment.amount, 0)
+    const pending = Math.max(0, invoice.grandTotal - paid)
+    pendingCollection += pending
+
+    if (paid >= invoice.grandTotal - 0.01) {
+      paidInvoicesCount++
+    } else if (paid > 0) {
+      partialInvoicesCount++
+    } else {
+      unpaidInvoicesCount++
+    }
+  })
   const avgBillValue = billableInvoices.length > 0 ? billedRevenue / billableInvoices.length : 0
   const collectionRate = billedRevenue > 0 ? Math.min(100, (collectedRevenue / billedRevenue) * 100) : 0
 
@@ -125,7 +144,7 @@ export async function getDashboardStats(range: ReportDateRange = getDefaultRepor
   const daySpan = Math.max(1, differenceInCalendarDays(to, from) + 1)
   const dailySales = eachDayOfInterval({ start: from, end: to }).map((day) => {
     const dayKey = format(day, "yyyy-MM-dd")
-    const label = daySpan > 45 ? format(day, "MMM d") : format(day, "MMM dd")
+    const label = daySpan > 45 ? format(day, "MMM d") : format(day, "EEE, MMM d")
     const dayInvoices = billableInvoices.filter((invoice) => format(invoice.createdAt, "yyyy-MM-dd") === dayKey)
     const dayPayments = payments.filter((payment) => format(payment.paidAt, "yyyy-MM-dd") === dayKey)
 

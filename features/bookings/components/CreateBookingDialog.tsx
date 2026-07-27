@@ -101,8 +101,8 @@ export function CreateBookingDialog({
         customerId,
         tableId: selectedTableId || undefined, // undefined prevents sending empty string if validation fails
         tableTypeId: selectedTableTypeId || undefined,
-        startTime: new Date(startTime).toISOString(),
-        endTime: new Date(endTime).toISOString(),
+        startTime: new Date(startTime + ":00+05:30").toISOString(),
+        endTime: new Date(endTime + ":00+05:30").toISOString(),
         status: "CONFIRMED"
       })
 

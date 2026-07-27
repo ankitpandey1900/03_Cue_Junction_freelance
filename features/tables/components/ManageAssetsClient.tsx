@@ -34,7 +34,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Trash2, Pencil, X } from "lucide-react"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { Trash2, Pencil, X, Info } from "lucide-react"
 import { TableWithDetails } from "../services/table.service"
 
 interface ManageAssetsClientProps {
@@ -49,6 +50,7 @@ export function ManageAssetsClient({ tables, tableTypes }: ManageAssetsClientPro
   // Edit Modes state
   const [editingTypeId, setEditingTypeId] = useState<string | null>(null)
   const [editingTableId, setEditingTableId] = useState<string | null>(null)
+  const [pricingMode, setPricingMode] = useState<"HOURLY" | "BASE_OVERTIME">("HOURLY")
 
   // Table Type form
   const typeForm = useForm<TableTypeFormValues>({
@@ -63,11 +65,20 @@ export function ManageAssetsClient({ tables, tableTypes }: ManageAssetsClientPro
   })
 
   const onSubmitType = async (data: TableTypeFormValues) => {
+    // Format data based on pricing mode
+    const submitData = { ...data }
+    if (pricingMode === "HOURLY") {
+      submitData.fixedRate = null
+      submitData.fixedDuration = null
+    } else {
+      submitData.minimumCharge = 0 // Base Rate acts as minimum
+    }
+
     let res
     if (editingTypeId) {
-      res = await updateTableTypeAction(editingTypeId, data)
+      res = await updateTableTypeAction(editingTypeId, submitData)
     } else {
-      res = await createTableTypeAction(data)
+      res = await createTableTypeAction(submitData)
     }
 
     if (res.success) {
@@ -101,6 +112,13 @@ export function ManageAssetsClient({ tables, tableTypes }: ManageAssetsClientPro
     typeForm.setValue("name", tt.name)
     typeForm.setValue("hourlyRate", tt.hourlyRate)
     typeForm.setValue("minimumCharge", tt.minimumCharge)
+    typeForm.setValue("fixedRate", tt.fixedRate)
+    typeForm.setValue("fixedDuration", tt.fixedDuration)
+    if (tt.fixedRate != null && tt.fixedDuration != null) {
+      setPricingMode("BASE_OVERTIME")
+    } else {
+      setPricingMode("HOURLY")
+    }
   }
 
   const handleEditTableClick = (t: TableWithDetails) => {
@@ -112,6 +130,7 @@ export function ManageAssetsClient({ tables, tableTypes }: ManageAssetsClientPro
 
   const handleCancelTypeEdit = () => {
     setEditingTypeId(null)
+    setPricingMode("HOURLY")
     typeForm.reset({ name: "", hourlyRate: 0, minimumCharge: 0, fixedRate: null, fixedDuration: null })
   }
 
@@ -182,50 +201,139 @@ export function ManageAssetsClient({ tables, tableTypes }: ManageAssetsClientPro
                     </FormItem>
                   )}
                 />
+
+                <Tabs value={pricingMode} onValueChange={(v) => setPricingMode(v as any)} className="w-full">
+                  <TabsList className="grid w-full grid-cols-2 mb-4">
+                    <TabsTrigger value="HOURLY">Strictly Hourly</TabsTrigger>
+                    <TabsTrigger value="BASE_OVERTIME">Base + Overtime</TabsTrigger>
+                  </TabsList>
+                </Tabs>
                 
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={typeForm.control}
-                    name="hourlyRate"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-xs">Hourly Rate (₹)</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            placeholder="150"
-                            className="h-9 text-sm"
-                            {...field}
-                            onChange={(e) => field.onChange(Number(e.target.value))}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={typeForm.control}
-                    name="minimumCharge"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-xs">Min. Charge (₹)</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            placeholder="0"
-                            className="h-9 text-sm"
-                            {...field}
-                            onChange={(e) => field.onChange(Number(e.target.value))}
-                          />
-                        </FormControl>
-                        <FormDescription className="text-[10px] leading-tight">
-                          Minimum checkout bill amount.
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+                {pricingMode === "HOURLY" && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={typeForm.control}
+                      name="hourlyRate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">Hourly Rate (₹)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              placeholder="150"
+                              className="h-9 text-sm"
+                              {...field}
+                              value={field.value === 0 ? "" : field.value}
+                              onChange={(e) => field.onChange(e.target.value === "" ? 0 : Number(e.target.value))}
+                            />
+                          </FormControl>
+                          <FormDescription className="text-[10px] leading-tight">
+                            Billed exactly per minute.
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={typeForm.control}
+                      name="minimumCharge"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">Min. Charge (₹)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              placeholder="0"
+                              className="h-9 text-sm"
+                              {...field}
+                              value={field.value === 0 ? "" : field.value}
+                              onChange={(e) => field.onChange(e.target.value === "" ? 0 : Number(e.target.value))}
+                            />
+                          </FormControl>
+                          <FormDescription className="text-[10px] leading-tight">
+                            Minimum checkout bill amount.
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                )}
+
+                {pricingMode === "BASE_OVERTIME" && (
+                  <div className="space-y-4 rounded-md border border-primary/20 bg-primary/5 p-4">
+                    <div className="flex gap-2 items-start text-xs text-primary mb-2">
+                      <Info className="h-4 w-4 shrink-0 mt-0.5" />
+                      <p>Charge a fixed amount for the first chunk of time, then switch to an hourly rate for any overtime.</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={typeForm.control}
+                        name="fixedDuration"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs font-semibold">Base Time (Mins)</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                placeholder="e.g. 20"
+                                className="h-9 text-sm border-primary/20 focus-visible:ring-primary/20"
+                                value={field.value ?? ""}
+                                onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={typeForm.control}
+                        name="fixedRate"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs font-semibold">Base Rate (₹)</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                placeholder="e.g. 75"
+                                className="h-9 text-sm border-primary/20 focus-visible:ring-primary/20"
+                                value={field.value ?? ""}
+                                onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    
+                    <div className="pt-2 border-t border-primary/10">
+                      <FormField
+                        control={typeForm.control}
+                        name="hourlyRate"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs">Overtime Rate (₹ / hr)</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                placeholder="150"
+                                className="h-9 text-sm border-primary/20"
+                                {...field}
+                                value={field.value === 0 ? "" : field.value ?? ""}
+                                onChange={(e) => field.onChange(e.target.value === "" ? 0 : Number(e.target.value))}
+                              />
+                            </FormControl>
+                            <FormDescription className="text-[10px] leading-tight text-muted-foreground">
+                              Rate applied per minute *after* the base time expires.
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+                )}
 
                 <div className="flex gap-2">
                   <Button type="submit" size="sm" className="gap-2">

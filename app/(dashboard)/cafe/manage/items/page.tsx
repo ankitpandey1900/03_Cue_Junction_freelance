@@ -4,7 +4,7 @@ import { getAllCategories } from "@/features/cafe/services/category.service"
 import { MenuItemManager } from "@/features/cafe/components/MenuItemManager"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, History } from "lucide-react"
 
 export const dynamic = "force-dynamic"
 
@@ -30,6 +30,13 @@ export default async function ManageMenuItemsPage() {
             <p className="text-sm text-muted-foreground mt-1">Manage cafe menu offerings</p>
           </div>
         </div>
+        
+        <Link href="/cafe/history">
+          <Button variant="outline" size="sm" className="gap-2 border-border/50 text-xs font-semibold h-9 rounded-lg text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/10 border-emerald-500/30">
+            <History className="h-4 w-4" />
+            Inventory History
+          </Button>
+        </Link>
       </div>
 
       <MenuItemManager menuItems={items} categories={categories} />
