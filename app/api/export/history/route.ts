@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth"
 import { headers } from "next/headers"
 import prisma from "@/lib/prisma"
 import { getDateRange, HistoryFilter, parseLabel } from "@/features/logs/services/history.service"
-import { format } from "date-fns"
+import { formatInTimeZone } from "date-fns-tz"
 
 export const dynamic = "force-dynamic"
 
@@ -71,8 +71,8 @@ export async function GET(req: NextRequest) {
     }
 
     const csvRows = logs.map(log => {
-      const date = format(new Date(log.createdAt), "yyyy-MM-dd")
-      const time = format(new Date(log.createdAt), "HH:mm:ss")
+      const date = formatInTimeZone(new Date(log.createdAt), "Asia/Kolkata", "yyyy-MM-dd")
+      const time = formatInTimeZone(new Date(log.createdAt), "Asia/Kolkata", "HH:mm:ss")
       const action = log.action
       const category = log.entityType
       const user = log.user ? (log.user.name || log.user.email) : "System"
@@ -95,7 +95,7 @@ export async function GET(req: NextRequest) {
     const csvContent = [csvHeaders, ...csvRows].join("\n")
 
     // 6. Return File
-    const filename = `history_export_${format(new Date(), "yyyy-MM-dd_HHmm")}.csv`
+    const filename = `history_export_${formatInTimeZone(new Date(), "Asia/Kolkata", "yyyy-MM-dd_HHmm")}.csv`
     
     return new NextResponse(csvContent, {
       headers: {

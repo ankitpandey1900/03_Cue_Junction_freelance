@@ -1,4 +1,4 @@
-import { format } from "date-fns"
+import { formatInTimeZone } from "date-fns-tz"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
@@ -70,7 +70,7 @@ export function CustomerProfileView({ customer }: { customer: CustomerProfile })
               )}
               <span className="flex items-center gap-1.5">
                 <CalendarDays className="h-3.5 w-3.5" />
-                Joined {format(new Date(customer.createdAt), "MMM d, yyyy")}
+                Joined {formatInTimeZone(new Date(customer.createdAt), "Asia/Kolkata", "MMM d, yyyy")}
               </span>
             </div>
           </div>
@@ -149,7 +149,7 @@ export function CustomerProfileView({ customer }: { customer: CustomerProfile })
                         </Badge>
                       </div>
                       <p className="text-sm text-muted-foreground font-medium">
-                        {format(new Date(invoice.createdAt), "MMM d, yyyy · h:mm a")}
+                        {formatInTimeZone(new Date(invoice.createdAt), "Asia/Kolkata", "MMM d, yyyy · h:mm a")}
                         {invoice.sessions?.[0]?.table ? ` · ${invoice.sessions[0].table.name}` : ""}
                       </p>
                     </div>
@@ -178,8 +178,8 @@ export function CustomerProfileView({ customer }: { customer: CustomerProfile })
                     <div className="space-y-1">
                       <p className="text-base font-bold text-foreground">{session.table.name}</p>
                       <p className="text-sm font-medium text-muted-foreground">
-                        {session.table.tableType.name} · {format(new Date(session.startTime), "MMM d, h:mm a")}
-                        {session.endTime ? ` to ${format(new Date(session.endTime), "h:mm a")}` : " - Active"}
+                        {session.table.tableType.name} · {formatInTimeZone(new Date(session.startTime), "Asia/Kolkata", "MMM d, h:mm a")}
+                        {session.endTime ? ` to ${formatInTimeZone(new Date(session.endTime), "Asia/Kolkata", "h:mm a")}` : " - Active"}
                       </p>
                     </div>
                     <div className="flex flex-wrap items-center gap-3 sm:justify-end">
@@ -216,7 +216,7 @@ export function CustomerProfileView({ customer }: { customer: CustomerProfile })
                         {order.orderItems.map((item) => `${item.itemNameSnapshot} x${item.quantity}`).join(", ")}
                       </p>
                       <p className="text-sm font-medium text-muted-foreground">
-                        {format(new Date(order.createdAt), "MMM d, yyyy · h:mm a")}
+                        {formatInTimeZone(new Date(order.createdAt), "Asia/Kolkata", "MMM d, yyyy · h:mm a")}
                         {order.session?.table ? ` · Ordered at ${order.session.table.name}` : " · Walk-in Order"}
                       </p>
                     </div>

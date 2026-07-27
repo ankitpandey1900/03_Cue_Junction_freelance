@@ -1,7 +1,26 @@
 import prisma from "@/lib/prisma"
-import { startOfDay, endOfDay, subDays, startOfToday } from "date-fns"
+import { subDays } from "date-fns"
+import { formatInTimeZone, fromZonedTime } from "date-fns-tz"
+
+const SYSTEM_TIMEZONE = "Asia/Kolkata"
 
 export type HistoryFilter = "today" | "yesterday" | "week" | "month" | "all" | "custom"
+
+// Helper to get midnight in IST
+function getMidnightIST(dateOrString: Date | string): Date {
+  const dStr = typeof dateOrString === 'string' 
+    ? dateOrString.split('T')[0] 
+    : formatInTimeZone(dateOrString, SYSTEM_TIMEZONE, "yyyy-MM-dd")
+  return fromZonedTime(`${dStr}T00:00:00`, SYSTEM_TIMEZONE)
+}
+
+// Helper to get end of day in IST
+function getEndOfDayIST(dateOrString: Date | string): Date {
+  const dStr = typeof dateOrString === 'string' 
+    ? dateOrString.split('T')[0] 
+    : formatInTimeZone(dateOrString, SYSTEM_TIMEZONE, "yyyy-MM-dd")
+  return fromZonedTime(`${dStr}T23:59:59.999`, SYSTEM_TIMEZONE)
+}
 
 export interface ActivityLogItem {
   id: string
@@ -26,24 +45,24 @@ export interface ActivityResult {
 }
 
 export function getDateRange(filter: HistoryFilter, from?: string, to?: string): { from: Date; to: Date } {
-  const today = startOfToday()
+  const today = new Date()
   switch (filter) {
     case "today":
-      return { from: startOfDay(today), to: endOfDay(today) }
+      return { from: getMidnightIST(today), to: getEndOfDayIST(today) }
     case "yesterday":
-      return { from: startOfDay(subDays(today, 1)), to: endOfDay(subDays(today, 1)) }
+      return { from: getMidnightIST(subDays(today, 1)), to: getEndOfDayIST(subDays(today, 1)) }
     case "week":
-      return { from: startOfDay(subDays(today, 6)), to: endOfDay(today) }
+      return { from: getMidnightIST(subDays(today, 6)), to: getEndOfDayIST(today) }
     case "month":
-      return { from: startOfDay(subDays(today, 29)), to: endOfDay(today) }
+      return { from: getMidnightIST(subDays(today, 29)), to: getEndOfDayIST(today) }
     case "custom":
       return {
-        from: from ? startOfDay(new Date(from)) : startOfDay(subDays(today, 29)),
-        to: to ? endOfDay(new Date(to)) : endOfDay(today),
+        from: from ? getMidnightIST(from) : getMidnightIST(subDays(today, 29)),
+        to: to ? getEndOfDayIST(to) : getEndOfDayIST(today),
       }
     case "all":
     default:
-      return { from: startOfDay(subDays(today, 365)), to: endOfDay(today) }
+      return { from: getMidnightIST(subDays(today, 365)), to: getEndOfDayIST(today) }
   }
 }
 

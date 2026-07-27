@@ -11,7 +11,7 @@ import { updateOrderStatusAction } from "@/features/cafe/actions/cafe.actions"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { format } from "date-fns"
+import { formatInTimeZone } from "date-fns-tz"
 import { Square, Loader2, ShoppingBag, Pause, Play, ArrowRightLeft, StopCircle } from "lucide-react"
 import {
   Dialog,
@@ -257,7 +257,7 @@ export function ActiveSessionCard({ session, availableTables = [] }: ActiveSessi
           <div className="text-right">
             <span className="text-[10px] font-medium text-muted-foreground block">STARTED AT</span>
             <span className="text-xs font-medium text-foreground">
-              {format(new Date(session.startTime), "hh:mm a")}
+              {formatInTimeZone(new Date(session.startTime), "Asia/Kolkata", "hh:mm a")}
             </span>
           </div>
         </div>

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import { format } from "date-fns"
+import { formatInTimeZone } from "date-fns-tz"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import {
@@ -128,12 +128,12 @@ export function InvoiceList({ invoices }: { invoices: InvoiceListItem[] }) {
 
     sorted.forEach((invoice) => {
       const d = new Date(invoice.createdAt)
-      const year = format(d, "yyyy")
-      const month = format(d, "MMMM") // e.g., "July"
+      const year = formatInTimeZone(d, "Asia/Kolkata", "yyyy")
+      const month = formatInTimeZone(d, "Asia/Kolkata", "MMMM") // e.g., "July"
       // Quick fallback if getWeekOfMonth fails for some reason
       const weekNum = Math.ceil(d.getDate() / 7)
       const week = `WEEK ${weekNum}`
-      const dateStr = format(d, "EEE, MMM d").toUpperCase() // e.g., "SUN, JUL 5"
+      const dateStr = formatInTimeZone(d, "Asia/Kolkata", "EEE, MMM d").toUpperCase() // e.g., "SUN, JUL 5"
 
       const amount = invoice.status !== "CANCELLED" ? invoice.grandTotal : 0
 

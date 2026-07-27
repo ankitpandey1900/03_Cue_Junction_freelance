@@ -1,7 +1,8 @@
+import { formatInTimeZone } from "date-fns-tz"
 "use client"
 
 import { useState, useMemo } from "react"
-import { format, isToday, isFuture, isPast } from "date-fns"
+import { isToday, isFuture, isPast } from "date-fns"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import {
@@ -254,10 +255,10 @@ export function BookingsList({
                 <TableCell>
                   <div className="flex flex-col">
                     <span className="font-medium text-foreground">
-                      {format(new Date(b.startTime), "MMM dd, yyyy")}
+                      {formatInTimeZone(new Date(b.startTime), "Asia/Kolkata", "MMM dd, yyyy")}
                     </span>
                     <span className="text-[11px] text-muted-foreground">
-                      {format(new Date(b.startTime), "h:mm a")} &ndash; {format(new Date(b.endTime), "h:mm a")}
+                      {formatInTimeZone(new Date(b.startTime), "Asia/Kolkata", "h:mm a")} &ndash; {formatInTimeZone(new Date(b.endTime), "Asia/Kolkata", "h:mm a")}
                     </span>
                   </div>
                 </TableCell>

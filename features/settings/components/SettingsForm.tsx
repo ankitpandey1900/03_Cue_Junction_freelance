@@ -6,7 +6,7 @@ import { CafeSettings } from "@prisma/client"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { toast } from "sonner"
-import { format } from "date-fns"
+import { formatInTimeZone } from "date-fns-tz"
 import {
   Store,
   FileText,
@@ -377,12 +377,12 @@ export function SettingsForm({
                           <p className="text-[10px] text-muted-foreground truncate">{staff.email}</p>
                           <div className="flex flex-col gap-0.5 text-[9px] text-muted-foreground mt-1.5 font-mono">
                             {staff.lastLoginAt ? (
-                              <span suppressHydrationWarning>In: {format(new Date(staff.lastLoginAt), "MMM d, hh:mm a")}</span>
+                              <span suppressHydrationWarning>In: {formatInTimeZone(new Date(staff.lastLoginAt), "Asia/Kolkata", "MMM d, hh:mm a")}</span>
                             ) : (
                               <span>In: Never logged in</span>
                             )}
                             {staff.lastLogoutAt && (
-                              <span suppressHydrationWarning>Out: {format(new Date(staff.lastLogoutAt), "MMM d, hh:mm a")}</span>
+                              <span suppressHydrationWarning>Out: {formatInTimeZone(new Date(staff.lastLogoutAt), "Asia/Kolkata", "MMM d, hh:mm a")}</span>
                             )}
                           </div>
                         </div>

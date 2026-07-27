@@ -9,7 +9,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { ShoppingCart, Timer, Layers, Activity, CalendarCheck, Receipt, AlertTriangle } from "lucide-react"
 import prisma from "@/lib/prisma"
 import { formatCurrency } from "@/lib/formatters"
-import { format } from "date-fns"
+import { formatInTimeZone } from "date-fns-tz"
 
 export const dynamic = "force-dynamic"
 
@@ -170,7 +170,7 @@ export default async function DashboardIndex() {
                   <div key={b.id} className="flex justify-between items-center text-[10px]">
                     <span className="font-medium text-foreground truncate max-w-[60%]">{b.customer.name}</span>
                     <span className="text-muted-foreground whitespace-nowrap">
-                      {format(new Date(b.startTime), "h:mm a")}
+                      {formatInTimeZone(new Date(b.startTime), "Asia/Kolkata", "h:mm a")}
                       {" • "}
                       {b.table ? b.table.tableType.name : b.tableType?.name || "Any"}
                     </span>

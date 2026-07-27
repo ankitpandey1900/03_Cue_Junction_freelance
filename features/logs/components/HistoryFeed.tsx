@@ -1,7 +1,7 @@
 "use client"
 
 import { useRouter, useSearchParams } from "next/navigation"
-import { format } from "date-fns"
+import { formatInTimeZone } from "date-fns-tz"
 import type { ActivityLogItem, HistoryFilter } from "../services/history.service"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -231,13 +231,13 @@ function TimelineDialog({ group, open, onClose }: { group: EventGroup | null; op
                 <div>
                   <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider mb-1">Started</p>
                   <p className="text-sm font-medium text-foreground">
-                    {sessionStart ? format(new Date(sessionStart.createdAt), "hh:mm a") : 'N/A'}
+                    {sessionStart ? formatInTimeZone(new Date(sessionStart.createdAt), "Asia/Kolkata", "hh:mm a") : 'N/A'}
                   </p>
                 </div>
                 <div>
                   <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider mb-1">Ended</p>
                   <p className="text-sm font-medium text-foreground">
-                    {sessionEnd ? format(new Date(sessionEnd.createdAt), "hh:mm a") : 'Active / Unbilled'}
+                    {sessionEnd ? formatInTimeZone(new Date(sessionEnd.createdAt), "Asia/Kolkata", "hh:mm a") : 'Active / Unbilled'}
                   </p>
                 </div>
               </div>
@@ -311,7 +311,7 @@ function TimelineDialog({ group, open, onClose }: { group: EventGroup | null; op
                     <div className="flex-1 pb-3">
                       <p className="text-xs font-bold text-foreground leading-none mb-1">{actionLabel}</p>
                       <p className="text-[10px] text-muted-foreground font-medium">
-                        {format(new Date(item.createdAt), "dd MMM, hh:mm a")} • {item.actorName || item.actorEmail}
+                        {formatInTimeZone(new Date(item.createdAt), "Asia/Kolkata", "dd MMM, hh:mm a")} • {item.actorName || item.actorEmail}
                       </p>
                       {item.detail && <p className="text-[10px] text-muted-foreground mt-1.5">{item.detail}</p>}
                       
@@ -381,17 +381,17 @@ export function HistoryFeed({ items, total, page, totalPages, currentFilter, cur
     }
 
     const data: HistoryNode = {}
-    const todayStr = format(new Date(), "yyyy-MM-dd")
+    const todayStr = formatInTimeZone(new Date(), "Asia/Kolkata", "yyyy-MM-dd")
     const yesterdayDate = new Date()
     yesterdayDate.setDate(yesterdayDate.getDate() - 1)
-    const yesterdayStr = format(yesterdayDate, "yyyy-MM-dd")
+    const yesterdayStr = formatInTimeZone(yesterdayDate, "Asia/Kolkata", "yyyy-MM-dd")
 
     for (const g of groups) {
       const d = new Date(g.latestItem.createdAt)
-      const monthStr = format(d, "MMMM yyyy").toUpperCase()
+      const monthStr = formatInTimeZone(d, "Asia/Kolkata", "MMMM yyyy").toUpperCase()
       
-      const exactDateStr = format(d, "yyyy-MM-dd")
-      let dateLabel = format(d, "EEE, MMM d, yyyy").toUpperCase()
+      const exactDateStr = formatInTimeZone(d, "Asia/Kolkata", "yyyy-MM-dd")
+      let dateLabel = formatInTimeZone(d, "Asia/Kolkata", "EEE, MMM d, yyyy").toUpperCase()
       if (exactDateStr === todayStr) dateLabel = "TODAY"
       else if (exactDateStr === yesterdayStr) dateLabel = "YESTERDAY"
 
@@ -572,7 +572,7 @@ export function HistoryFeed({ items, total, page, totalPages, currentFilter, cur
                                           {item.label}
                                         </p>
                                         <span className="text-[10px] text-muted-foreground font-mono whitespace-nowrap">
-                                          {format(new Date(item.createdAt), "hh:mm a")}
+                                          {formatInTimeZone(new Date(item.createdAt), "Asia/Kolkata", "hh:mm a")}
                                         </span>
                                       </div>
                                       <div className="flex flex-wrap items-center gap-2 mt-1">

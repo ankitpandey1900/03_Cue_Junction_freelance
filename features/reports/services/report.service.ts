@@ -231,9 +231,9 @@ export async function getDashboardStats(range: ReportDateRange = getDefaultRepor
 
   return {
     range: {
-      from: format(from, "yyyy-MM-dd"),
-      to: format(to, "yyyy-MM-dd"),
-      label: `${format(from, "MMM dd, yyyy")} - ${format(to, "MMM dd, yyyy")}`,
+      from: formatInTimeZone(from, SYSTEM_TIMEZONE, "yyyy-MM-dd"),
+      to: formatInTimeZone(to, SYSTEM_TIMEZONE, "yyyy-MM-dd"),
+      label: `${formatInTimeZone(from, SYSTEM_TIMEZONE, "MMM dd, yyyy")} - ${formatInTimeZone(to, SYSTEM_TIMEZONE, "MMM dd, yyyy")}`,
     },
     collectedRevenue,
     billedRevenue,

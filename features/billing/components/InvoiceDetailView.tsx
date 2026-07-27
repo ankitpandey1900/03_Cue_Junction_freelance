@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { format } from "date-fns"
+import { formatInTimeZone } from "date-fns-tz"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -352,7 +352,7 @@ export function InvoiceDetailView({
                   Invoice ID: <span className="font-semibold text-foreground font-mono">{invoiceLabel}</span>
                 </p>
                 <p className="text-muted-foreground">
-                  Date: <span className="font-medium text-foreground">{format(new Date(invoice.createdAt), "MMM dd, yyyy h:mm a")}</span>
+                  Date: <span className="font-medium text-foreground">{formatInTimeZone(new Date(invoice.createdAt), "Asia/Kolkata", "MMM dd, yyyy h:mm a")}</span>
                 </p>
                 {primarySession?.table && (
                   <p className="text-muted-foreground">
@@ -630,7 +630,7 @@ export function InvoiceDetailView({
                       <div>
                         <p className="font-semibold text-foreground">{formatCurrency(payment.amount, 2)}</p>
                         <p className="text-[10px] text-muted-foreground">
-                          {format(new Date(payment.paidAt), "MMM dd, h:mm a")}
+                          {formatInTimeZone(new Date(payment.paidAt), "Asia/Kolkata", "MMM dd, h:mm a")}
                         </p>
                       </div>
                       <Badge variant="secondary" className="text-[9px] font-medium font-mono">

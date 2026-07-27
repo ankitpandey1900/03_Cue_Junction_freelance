@@ -13,7 +13,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
-import { format } from "date-fns"
+import { formatInTimeZone } from "date-fns-tz"
 import { Users, Star, Search } from "lucide-react"
 import { formatCurrency } from "@/lib/formatters"
 
@@ -83,7 +83,7 @@ export function CustomerList({ customers }: CustomerListProps) {
                     <p className="text-sm font-semibold text-foreground truncate">{customer.name}</p>
                     <p className="text-xs text-muted-foreground">{customer.phone}</p>
                     <p className="text-[11px] text-muted-foreground mt-1">
-                      Added {format(new Date(customer.createdAt), "MMM d, yyyy")}
+                      Added {formatInTimeZone(new Date(customer.createdAt), "Asia/Kolkata", "MMM d, yyyy")}
                     </p>
                   </div>
                   <div className="text-right shrink-0">
@@ -139,7 +139,7 @@ export function CustomerList({ customers }: CustomerListProps) {
                       </div>
                     </TableCell>
                     <TableCell className="text-right text-sm text-muted-foreground font-mono">
-                      {format(new Date(customer.createdAt), "MMM d, yyyy")}
+                      {formatInTimeZone(new Date(customer.createdAt), "Asia/Kolkata", "MMM d, yyyy")}
                     </TableCell>
                   </TableRow>
                 ))}
