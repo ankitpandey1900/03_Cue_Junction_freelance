@@ -1,5 +1,8 @@
-import { addDays, differenceInCalendarDays, eachDayOfInterval, format, isValid, parseISO, startOfDay, subDays } from "date-fns"
+import { addDays, differenceInCalendarDays, eachDayOfInterval, format, isValid, parseISO, subDays } from "date-fns"
+import { formatInTimeZone, fromZonedTime } from "date-fns-tz"
 import prisma from "@/lib/prisma"
+
+const SYSTEM_TIMEZONE = "Asia/Kolkata"
 
 export type ReportDateRange = {
   from: Date
@@ -7,20 +10,29 @@ export type ReportDateRange = {
 }
 
 export function getDefaultReportRange(): ReportDateRange {
-  const today = startOfDay(new Date())
+  // Always calculate "today" according to the cafe's physical timezone, never UTC
+  const todayStr = formatInTimeZone(new Date(), SYSTEM_TIMEZONE, "yyyy-MM-dd")
+  const to = fromZonedTime(`${todayStr}T00:00:00`, SYSTEM_TIMEZONE)
+  
   return {
-    from: subDays(today, 29),
-    to: today,
+    from: subDays(to, 29),
+    to,
   }
 }
 
 export function parseReportRange(from?: string, to?: string): ReportDateRange {
   const fallback = getDefaultReportRange()
-  const parsedFrom = from ? parseISO(from) : fallback.from
-  const parsedTo = to ? parseISO(to) : fallback.to
+  
+  let safeFrom = fallback.from
+  let safeTo = fallback.to
 
-  const safeFrom = isValid(parsedFrom) ? startOfDay(parsedFrom) : fallback.from
-  const safeTo = isValid(parsedTo) ? startOfDay(parsedTo) : fallback.to
+  if (from && /^\d{4}-\d{2}-\d{2}$/.test(from)) {
+    safeFrom = fromZonedTime(`${from}T00:00:00`, SYSTEM_TIMEZONE)
+  }
+  
+  if (to && /^\d{4}-\d{2}-\d{2}$/.test(to)) {
+    safeTo = fromZonedTime(`${to}T00:00:00`, SYSTEM_TIMEZONE)
+  }
 
   if (safeFrom > safeTo) {
     return fallback
@@ -30,8 +42,8 @@ export function parseReportRange(from?: string, to?: string): ReportDateRange {
 }
 
 export async function getDashboardStats(range: ReportDateRange = getDefaultReportRange()) {
-  const from = startOfDay(range.from)
-  const to = startOfDay(range.to)
+  const from = range.from
+  const to = range.to
   const exclusiveTo = addDays(to, 1)
   const dateWhere = { gte: from, lt: exclusiveTo }
 
