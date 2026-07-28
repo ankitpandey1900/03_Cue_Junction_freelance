@@ -46,7 +46,7 @@ export function BookingStartDialog({
   onOpenChange,
 }: BookingStartDialogProps) {
   const [loading, setLoading] = useState(false)
-  const [extraCharges, setExtraCharges] = useState<number>(0)
+  const [extraHourlyRate, setExtraHourlyRate] = useState<number>(0)
   const [selectedTableId, setSelectedTableId] = useState<string>(tableId)
 
   // Filter available tables based on tableTypeId if this booking is for a specific type
@@ -66,7 +66,7 @@ export function BookingStartDialog({
         tableId: selectedTableId,
         customerId,
         bookingId,
-        extraCharges,
+        extraHourlyRate,
       })
 
       if (res.success) {
@@ -133,26 +133,25 @@ export function BookingStartDialog({
             )}
             <div className="flex items-center justify-between text-xs">
               <span className="text-muted-foreground font-medium">Customer</span>
-              <span className="font-semibold text-foreground">{customerName}</span>
+              <span className="font-semibold text-customer">{customerName}</span>
             </div>
           </div>
 
           {/* Extra Charges */}
           <div className="space-y-2">
-            <Label className="text-sm font-semibold flex items-center gap-1.5">
+            <Label className="text-xs text-muted-foreground uppercase font-bold tracking-wider flex items-center gap-1.5">
               <Zap className="h-3.5 w-3.5 text-amber-500" />
-              Extra Setup Charges (₹)
+              Extra Hourly Rate (₹/hr)
             </Label>
-            <p className="text-[11px] text-muted-foreground">
-              For extra controllers, special setup, or any one-time charges.
-            </p>
             <Input
               type="number"
-              value={extraCharges === 0 ? "" : extraCharges}
+              min="0"
+              placeholder="e.g. 50"
+              value={extraHourlyRate === 0 ? "" : extraHourlyRate}
               onChange={(e) =>
-                setExtraCharges(Math.max(0, e.target.value === "" ? 0 : Number(e.target.value)))
+                setExtraHourlyRate(Math.max(0, e.target.value === "" ? 0 : Number(e.target.value)))
               }
-              className="h-9 text-sm bg-background/60"
+              className="bg-muted/50 font-mono"
             />
           </div>
 

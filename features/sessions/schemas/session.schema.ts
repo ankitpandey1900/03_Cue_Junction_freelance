@@ -4,7 +4,7 @@ export const startSessionSchema = z.object({
   tableId: z.string().min(1, "Table is required"),
   customerId: z.string().optional(), // Optional for guest sessions
   bookingId: z.string().optional(),
-  extraCharges: z.number().min(0).optional(),
+  extraHourlyRate: z.number().min(0).optional(),
   notes: z.string().optional(),
 })
 

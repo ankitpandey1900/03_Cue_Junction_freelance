@@ -77,11 +77,11 @@ export interface EventGroup {
 }
 
 const FILTERS: { value: HistoryFilter; label: string }[] = [
-  { value: "today",     label: "Today" },
+  { value: "today", label: "Today" },
   { value: "yesterday", label: "Yesterday" },
-  { value: "week",      label: "Last 7 Days" },
-  { value: "month",     label: "Last 30 Days" },
-  { value: "all",       label: "All Time" },
+  { value: "week", label: "Last 7 Days" },
+  { value: "month", label: "Last 30 Days" },
+  { value: "all", label: "All Time" },
 ]
 
 const ENTITY_FILTERS = [
@@ -100,65 +100,65 @@ const ENTITY_FILTERS = [
 function getActionMeta(action: string): { label: string; icon: React.ReactNode; colorClass: string } {
   // Sessions
   if (action === "SESSION_STARTED")
-    return { label: "Session Started",   icon: <PlayCircle  className="h-3.5 w-3.5" />, colorClass: "bg-emerald-500/10 text-emerald-600 border-emerald-500/25 dark:text-emerald-400" }
+    return { label: "Session Started", icon: <PlayCircle className="h-3.5 w-3.5" />, colorClass: "bg-emerald-500/10 text-emerald-600 border-emerald-500/25 dark:text-emerald-400" }
   if (action === "SESSION_PAUSED")
-    return { label: "Session Paused",    icon: <PauseCircle className="h-3.5 w-3.5" />, colorClass: "bg-amber-500/10 text-amber-600 border-amber-500/25 dark:text-amber-400" }
+    return { label: "Session Paused", icon: <PauseCircle className="h-3.5 w-3.5" />, colorClass: "bg-amber-500/10 text-amber-600 border-amber-500/25 dark:text-amber-400" }
   if (action === "SESSION_RESUMED")
-    return { label: "Session Resumed",   icon: <PlayCircle  className="h-3.5 w-3.5" />, colorClass: "bg-teal-500/10 text-teal-600 border-teal-500/25 dark:text-teal-400" }
+    return { label: "Session Resumed", icon: <PlayCircle className="h-3.5 w-3.5" />, colorClass: "bg-teal-500/10 text-teal-600 border-teal-500/25 dark:text-teal-400" }
   if (action === "SESSION_ENDED")
-    return { label: "Session Ended",     icon: <StopCircle  className="h-3.5 w-3.5" />, colorClass: "bg-blue-500/10 text-blue-600 border-blue-500/25 dark:text-blue-400" }
+    return { label: "Session Ended", icon: <StopCircle className="h-3.5 w-3.5" />, colorClass: "bg-blue-500/10 text-blue-600 border-blue-500/25 dark:text-blue-400" }
   if (action === "TABLE_SWITCHED")
-    return { label: "Table Switched",    icon: <RefreshCw   className="h-3.5 w-3.5" />, colorClass: "bg-purple-500/10 text-purple-600 border-purple-500/25 dark:text-purple-400" }
+    return { label: "Table Switched", icon: <RefreshCw className="h-3.5 w-3.5" />, colorClass: "bg-purple-500/10 text-purple-600 border-purple-500/25 dark:text-purple-400" }
   // Invoices / Billing
   if (action === "CHECKOUT_COMPLETED")
-    return { label: "Checkout Completed",icon: <CheckCircle2 className="h-3.5 w-3.5"/>, colorClass: "bg-emerald-500/10 text-emerald-600 border-emerald-500/25 dark:text-emerald-400" }
+    return { label: "Checkout Completed", icon: <CheckCircle2 className="h-3.5 w-3.5" />, colorClass: "bg-emerald-500/10 text-emerald-600 border-emerald-500/25 dark:text-emerald-400" }
   if (action === "INVOICE_PAID")
-    return { label: "Invoice Paid",      icon: <Receipt      className="h-3.5 w-3.5"/>, colorClass: "bg-emerald-500/10 text-emerald-600 border-emerald-500/25 dark:text-emerald-400" }
+    return { label: "Invoice Paid", icon: <Receipt className="h-3.5 w-3.5" />, colorClass: "bg-emerald-500/10 text-emerald-600 border-emerald-500/25 dark:text-emerald-400" }
   if (action === "INVOICE_DELETED")
-    return { label: "Invoice Deleted",   icon: <Trash2       className="h-3.5 w-3.5"/>, colorClass: "bg-rose-500/10 text-rose-600 border-rose-500/25 dark:text-rose-400" }
+    return { label: "Invoice Deleted", icon: <Trash2 className="h-3.5 w-3.5" />, colorClass: "bg-rose-500/10 text-rose-600 border-rose-500/25 dark:text-rose-400" }
   if (action === "INVOICE_UPDATED")
-    return { label: "Invoice Updated",   icon: <Pencil       className="h-3.5 w-3.5"/>, colorClass: "bg-amber-500/10 text-amber-600 border-amber-500/25 dark:text-amber-400" }
+    return { label: "Invoice Updated", icon: <Pencil className="h-3.5 w-3.5" />, colorClass: "bg-amber-500/10 text-amber-600 border-amber-500/25 dark:text-amber-400" }
   if (action === "INVOICE_CANCELLED")
-    return { label: "Invoice Cancelled", icon: <Receipt      className="h-3.5 w-3.5"/>, colorClass: "bg-zinc-500/10 text-zinc-500 border-zinc-500/25" }
+    return { label: "Invoice Cancelled", icon: <Receipt className="h-3.5 w-3.5" />, colorClass: "bg-zinc-500/10 text-zinc-500 border-zinc-500/25" }
   // Customers
   if (action === "CUSTOMER_CREATED")
-    return { label: "Customer Added",    icon: <UserPlus     className="h-3.5 w-3.5"/>, colorClass: "bg-emerald-500/10 text-emerald-600 border-emerald-500/25 dark:text-emerald-400" }
+    return { label: "Customer Added", icon: <UserPlus className="h-3.5 w-3.5" />, colorClass: "bg-emerald-500/10 text-emerald-600 border-emerald-500/25 dark:text-emerald-400" }
   if (action === "CUSTOMER_UPDATED")
-    return { label: "Customer Updated",  icon: <UserCog      className="h-3.5 w-3.5"/>, colorClass: "bg-amber-500/10 text-amber-600 border-amber-500/25 dark:text-amber-400" }
+    return { label: "Customer Updated", icon: <UserCog className="h-3.5 w-3.5" />, colorClass: "bg-amber-500/10 text-amber-600 border-amber-500/25 dark:text-amber-400" }
   if (action === "CUSTOMER_DELETED")
-    return { label: "Customer Deleted",  icon: <Trash2       className="h-3.5 w-3.5"/>, colorClass: "bg-rose-500/10 text-rose-600 border-rose-500/25 dark:text-rose-400" }
+    return { label: "Customer Deleted", icon: <Trash2 className="h-3.5 w-3.5" />, colorClass: "bg-rose-500/10 text-rose-600 border-rose-500/25 dark:text-rose-400" }
   // Bookings
   if (action === "BOOKING_CREATED")
-    return { label: "Booking Created",   icon: <CalendarPlus className="h-3.5 w-3.5"/>, colorClass: "bg-blue-500/10 text-blue-600 border-blue-500/25 dark:text-blue-400" }
+    return { label: "Booking Created", icon: <CalendarPlus className="h-3.5 w-3.5" />, colorClass: "bg-blue-500/10 text-blue-600 border-blue-500/25 dark:text-blue-400" }
   if (action === "BOOKING_DELETED")
-    return { label: "Booking Deleted",   icon: <CalendarX    className="h-3.5 w-3.5"/>, colorClass: "bg-rose-500/10 text-rose-600 border-rose-500/25 dark:text-rose-400" }
+    return { label: "Booking Deleted", icon: <CalendarX className="h-3.5 w-3.5" />, colorClass: "bg-rose-500/10 text-rose-600 border-rose-500/25 dark:text-rose-400" }
   if (action === "BOOKING_UPDATED")
-    return { label: "Booking Updated",   icon: <Pencil       className="h-3.5 w-3.5"/>, colorClass: "bg-amber-500/10 text-amber-600 border-amber-500/25 dark:text-amber-400" }
+    return { label: "Booking Updated", icon: <Pencil className="h-3.5 w-3.5" />, colorClass: "bg-amber-500/10 text-amber-600 border-amber-500/25 dark:text-amber-400" }
   // Staff / Users
   if (action === "STAFF_CREATED")
-    return { label: "Staff Created",     icon: <UserPlus     className="h-3.5 w-3.5"/>, colorClass: "bg-violet-500/10 text-violet-600 border-violet-500/25 dark:text-violet-400" }
+    return { label: "Staff Created", icon: <UserPlus className="h-3.5 w-3.5" />, colorClass: "bg-violet-500/10 text-violet-600 border-violet-500/25 dark:text-violet-400" }
   if (action.startsWith("STAFF_"))
-    return { label: `Staff ${action.replace("STAFF_", "")}`, icon: <UserCog className="h-3.5 w-3.5"/>, colorClass: "bg-violet-500/10 text-violet-600 border-violet-500/25 dark:text-violet-400" }
+    return { label: `Staff ${action.replace("STAFF_", "")}`, icon: <UserCog className="h-3.5 w-3.5" />, colorClass: "bg-violet-500/10 text-violet-600 border-violet-500/25 dark:text-violet-400" }
   // Settings
   if (action === "SETTINGS_UPDATED")
-    return { label: "Settings Updated",  icon: <Settings2    className="h-3.5 w-3.5"/>, colorClass: "bg-orange-500/10 text-orange-600 border-orange-500/25 dark:text-orange-400" }
+    return { label: "Settings Updated", icon: <Settings2 className="h-3.5 w-3.5" />, colorClass: "bg-orange-500/10 text-orange-600 border-orange-500/25 dark:text-orange-400" }
   // Cafe Inventory
   if (action === "ITEM_CREATED" || action === "ITEM_UPDATED" || action === "STOCK_UPDATE")
-    return { label: "Cafe Updated", icon: <Info className="h-3.5 w-3.5"/>, colorClass: "bg-emerald-500/10 text-emerald-600 border-emerald-500/25 dark:text-emerald-400" }
+    return { label: "Cafe Updated", icon: <Info className="h-3.5 w-3.5" />, colorClass: "bg-emerald-500/10 text-emerald-600 border-emerald-500/25 dark:text-emerald-400" }
   if (action === "ITEM_DELETED" || action === "ITEM_DISABLED")
-    return { label: "Cafe Removed", icon: <Trash2 className="h-3.5 w-3.5"/>, colorClass: "bg-rose-500/10 text-rose-600 border-rose-500/25 dark:text-rose-400" }
+    return { label: "Cafe Removed", icon: <Trash2 className="h-3.5 w-3.5" />, colorClass: "bg-rose-500/10 text-rose-600 border-rose-500/25 dark:text-rose-400" }
   // Fallback
-  return { label: action.replace(/_/g, " "), icon: <LogIn className="h-3.5 w-3.5"/>, colorClass: "bg-muted text-muted-foreground border-border" }
+  return { label: action.replace(/_/g, " "), icon: <LogIn className="h-3.5 w-3.5" />, colorClass: "bg-muted text-muted-foreground border-border" }
 }
 
 // ─── Entity type pill ─────────────────────────────────────────────
 function entityColor(entityType: string) {
   const map: Record<string, string> = {
-    SESSION:  "text-blue-600 dark:text-blue-400",
-    INVOICE:  "text-emerald-600 dark:text-emerald-400",
+    SESSION: "text-blue-600 dark:text-blue-400",
+    INVOICE: "text-emerald-600 dark:text-emerald-400",
     CUSTOMER: "text-violet-600 dark:text-violet-400",
-    BOOKING:  "text-amber-600 dark:text-amber-400",
-    USER:     "text-rose-600 dark:text-rose-400",
+    BOOKING: "text-amber-600 dark:text-amber-400",
+    USER: "text-rose-600 dark:text-rose-400",
     SETTINGS: "text-orange-600 dark:text-orange-400",
     SESSION_FLOW: "text-blue-600 dark:text-blue-400",
     MENU_ITEM: "text-emerald-600 dark:text-emerald-400",
@@ -186,58 +186,58 @@ function TimelineDialog({ group, open, onClose }: { group: EventGroup | null; op
   if (!group) return null
 
   const { entityType, entityId, latestItem, items } = group
-  
+
   // Use unified items if available, otherwise fallback to local group items immediately for fast UI
   const rawItems = unifiedItems || items
   const timelineItems = [...rawItems].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
 
   const isSession = entityType === 'SESSION'
   const isInvoice = entityType === 'INVOICE'
-  
+
   const sessionStart = isSession ? timelineItems.find(i => i.action === 'SESSION_STARTED') : null
   const sessionEnd = isSession ? timelineItems.find(i => i.action === 'SESSION_ENDED') : null
-  
+
   let tableName = "Unknown Table"
   let tableType = ""
   let totalAmountPaid = 0
   const paymentMethods = new Set<string>()
   let invoiceNumber = null
   let lastReceiver = ""
-  
+
   if (sessionStart) {
-    try { 
-      const m = JSON.parse(sessionStart.metadata || '{}'); 
+    try {
+      const m = JSON.parse(sessionStart.metadata || '{}');
       if (m.tableName) tableName = m.tableName;
       if (m.tableType) tableType = m.tableType;
-    } catch {}
+    } catch { }
   }
-  
+
   const invoicePaidEvents = isInvoice ? timelineItems.filter(i => i.action === 'INVOICE_PAID') : []
-  
+
   let invoiceTableNames = ""
   let invoiceCustomerName = ""
-  
+
   if (isInvoice) {
     const checkoutEvent = timelineItems.find(i => i.action === 'CHECKOUT_COMPLETED' || i.action === 'INVOICE_UPDATED' || i.action === 'INVOICE_PAID')
     if (checkoutEvent) {
-      try { 
+      try {
         const m = JSON.parse(checkoutEvent.metadata || '{}')
         if (m.invoiceNumber) invoiceNumber = m.invoiceNumber
         if (m.tableNames) invoiceTableNames = m.tableNames
         if (m.customerName) invoiceCustomerName = m.customerName
-      } catch {}
+      } catch { }
     }
   }
 
   for (const event of invoicePaidEvents) {
-    try { 
+    try {
       const m = JSON.parse(event.metadata || '{}')
       if (m.amount) totalAmountPaid += Number(m.amount)
       if (m.method) paymentMethods.add(m.method)
       lastReceiver = event.actorName || event.actorEmail || ""
-    } catch {}
+    } catch { }
   }
-  
+
   const hasPayments = invoicePaidEvents.length > 0
 
   return (
@@ -246,10 +246,10 @@ function TimelineDialog({ group, open, onClose }: { group: EventGroup | null; op
         <DialogHeader className="px-5 pt-5 pb-3 border-b border-border/60 bg-muted/20">
           <DialogTitle className="flex flex-col gap-1 text-sm">
             <span className="font-semibold text-foreground text-base">
-              {isSession 
-                ? `Session Summary: ${tableName}` 
-                : isInvoice 
-                  ? `Invoice: #${invoiceNumber || 'Pending'}${invoiceCustomerName ? ` - ${invoiceCustomerName}` : ''}${invoiceTableNames ? ` (${invoiceTableNames})` : ''}` 
+              {isSession
+                ? `Session Summary: ${tableName}`
+                : isInvoice
+                  ? `Invoice: #${invoiceNumber || 'Pending'}${invoiceCustomerName ? ` - ${invoiceCustomerName}` : ''}${invoiceTableNames ? ` (${invoiceTableNames})` : ''}`
                   : latestItem.label}
             </span>
             {loading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground ml-2 inline-block" />}
@@ -273,7 +273,7 @@ function TimelineDialog({ group, open, onClose }: { group: EventGroup | null; op
                   </p>
                 </div>
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider mb-1">Started</p>
@@ -318,16 +318,16 @@ function TimelineDialog({ group, open, onClose }: { group: EventGroup | null; op
             <div className="space-y-4">
               {timelineItems.map((item, idx) => {
                 const { label: actionLabel, icon: actionIcon, colorClass } = getActionMeta(item.action)
-                
+
                 let meta: Record<string, any> = {}
                 try { if (item.metadata) meta = JSON.parse(item.metadata) } catch { /* ignore */ }
-                
+
                 // Exclude system IDs from being displayed in the timeline UI
                 const excludedKeys = ['sessionId', 'id', 'invoiceId', 'customerId', 'tableId', 'tableTypeId', 'staffId', 'tableNames', 'customerName', 'invoiceNumber', 'amount', 'method']
-                
+
                 const lowerLabel = actionLabel.toLowerCase()
                 const lowerDetail = (item.detail || "").toLowerCase()
-                
+
                 const formatMetaValue = (k: string, v: any) => {
                   if (['amount', 'discount', 'extraCharges', 'grandTotal', 'sessionTotal', 'cafeTotal', 'taxAmount'].includes(k)) {
                     return `₹${v}`
@@ -338,11 +338,11 @@ function TimelineDialog({ group, open, onClose }: { group: EventGroup | null; op
                 const metaEntries = Object.entries(meta).filter(([k, v]) => {
                   if (v === null || v === undefined || v === "") return false
                   if (excludedKeys.includes(k)) return false
-                  
+
                   // Hide redundant text (if the label already says "Shubham", don't show name: Shubham)
                   const vStr = String(v).toLowerCase()
                   if (vStr.length > 3 && (lowerLabel.includes(vStr) || lowerDetail.includes(vStr))) return false
-                  
+
                   return true
                 })
 
@@ -361,7 +361,7 @@ function TimelineDialog({ group, open, onClose }: { group: EventGroup | null; op
                         {formatInTimeZone(new Date(item.createdAt), "Asia/Kolkata", "dd MMM, hh:mm a")} • {item.actorName || item.actorEmail}
                       </p>
                       {item.detail && <p className="text-[10px] text-muted-foreground mt-1.5">{item.detail}</p>}
-                      
+
                       {metaEntries.length > 0 && (
                         <div className="mt-2 rounded-lg bg-muted/20 border border-border/40 p-2.5 space-y-1.5 shadow-sm">
                           {metaEntries.map(([k, v]) => (
@@ -390,7 +390,7 @@ export function HistoryFeed({ items, total, page, totalPages, currentFilter, cur
   const searchParams = useSearchParams()
   const [searchQuery, setSearchQuery] = useState(currentQuery || "")
   const [selectedGroup, setSelectedGroup] = useState<EventGroup | null>(null)
-  
+
   const getEventGroup = (entityId: string, entityType: string): EventGroup => {
     const groupItems = items.filter(i => (i.entityId || i.id) === entityId && i.entityType === entityType)
     return {
@@ -431,7 +431,7 @@ export function HistoryFeed({ items, total, page, totalPages, currentFilter, cur
 
       {/* Filters Bar */}
       <div className="bg-card border border-border/50 rounded-xl p-4 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        
+
         <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
           {/* Entity Filter */}
           <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -470,7 +470,7 @@ export function HistoryFeed({ items, total, page, totalPages, currentFilter, cur
         </div>
 
         {/* Search Bar */}
-        <form 
+        <form
           className="relative flex-1 w-full lg:max-w-xs"
           onSubmit={(e) => {
             e.preventDefault()
@@ -527,7 +527,7 @@ export function HistoryFeed({ items, total, page, totalPages, currentFilter, cur
       {feedItems.length > 0 && (
         <div className="rounded-md border bg-card overflow-hidden">
           <div className="overflow-x-auto">
-            <Table>
+            <Table className="min-w-[800px]">
               <TableHeader className="bg-muted/50">
                 <TableRow>
                   <TableHead className="whitespace-nowrap font-semibold">Timestamp</TableHead>
@@ -553,7 +553,7 @@ export function HistoryFeed({ items, total, page, totalPages, currentFilter, cur
                           </span>
                         </div>
                       </TableCell>
-                      
+
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <div className={`hidden sm:flex h-8 w-8 rounded-full items-center justify-center shrink-0 border shadow-sm ${colorClass}`}>
@@ -564,7 +564,7 @@ export function HistoryFeed({ items, total, page, totalPages, currentFilter, cur
                           </span>
                         </div>
                       </TableCell>
-                      
+
                       <TableCell className="whitespace-nowrap">
                         <Badge variant="secondary" className={`text-[10px] px-2 py-0.5 uppercase tracking-wider font-bold ${colorClass}`}>
                           {actionLabel}
@@ -593,9 +593,9 @@ export function HistoryFeed({ items, total, page, totalPages, currentFilter, cur
                       </TableCell>
 
                       <TableCell className="text-right">
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           className="h-8 w-8 text-muted-foreground hover:text-primary"
                           onClick={() => setSelectedGroup(getEventGroup(item.entityId || item.id, item.entityType))}
                         >

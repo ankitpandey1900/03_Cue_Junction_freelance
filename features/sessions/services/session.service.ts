@@ -1,3 +1,4 @@
+// Force TS cache invalidation
 import { Session } from "@prisma/client"
 import { StartSessionFormValues } from "../schemas/session.schema"
 import prisma from "@/lib/prisma"
@@ -45,7 +46,8 @@ export async function startSession(data: StartSessionFormValues): Promise<Sessio
         tableId: data.tableId,
         customerId: data.customerId ?? null,
         bookingId: data.bookingId ?? null,
-        extraCharges: data.extraCharges || 0,
+        extraHourlyRate: data.extraHourlyRate || 0,
+        extraCharges: 0,
         startTime: new Date(),
         status: "ACTIVE",
       }
@@ -133,26 +135,54 @@ export async function switchTable(sessionId: string, newTableId: string, extraCh
       data: { status: "OCCUPIED" }
     })
 
-    // 3. Calculate rate adjustment for the past duration
-    const end = new Date().getTime()
-    let mins = Math.floor((end - currentSession.startTime.getTime()) / 60000)
+    // 3. Calculate exact cost for the past duration on this table
+    const end = new Date()
+    let mins = Math.floor((end.getTime() - currentSession.startTime.getTime()) / 60000)
     mins -= Math.floor(currentSession.totalPauseDurationSeconds / 60)
     if (mins < 1) mins = 1
     
-    const oldType = currentSession.table.tableType
-    const newType = newTable.tableType
-    const hours = mins / 60
+    const type = currentSession.table.tableType
+    let cost = 0
+    if (type.fixedRate != null && type.fixedDuration != null && type.fixedDuration > 0) {
+      if (mins <= type.fixedDuration) {
+        cost = type.fixedRate
+      } else {
+        const extraMinutes = mins - type.fixedDuration
+        const applicableHourlyRate = type.overtimeHourlyRate ?? type.hourlyRate
+        cost = type.fixedRate + (extraMinutes / 60) * applicableHourlyRate
+      }
+    } else {
+      const hours = mins / 60
+      cost = hours * type.hourlyRate
+    }
+    if (cost < type.minimumCharge) cost = type.minimumCharge
     
-    // Mathematically offset the past duration cost against the new table's rate
-    // so that at checkout, they are billed precisely the correct amounts for both segments.
-    const adjustment = (hours * oldType.hourlyRate) - (hours * newType.hourlyRate)
+    const extraHourlyCost = (currentSession.extraHourlyRate || 0) * (mins / 60)
+    const segmentCost = cost + extraHourlyCost
 
-    // 4. Update the existing session
+    // 4. Build the switch history ledger entry
+    const existingHistory = (currentSession.switchHistory as any[]) || []
+    const ledgerEntry = {
+      tableName: currentSession.table.name,
+      tableTypeName: type.name,
+      hourlyRate: type.hourlyRate,
+      durationMinutes: mins,
+      cost: segmentCost,
+      startedAt: currentSession.startTime.toISOString(),
+      switchedAt: end.toISOString(),
+    }
+
+    // 5. Update the existing session
     const updatedSession = await tx.session.update({
       where: { id: sessionId },
       data: {
         tableId: newTableId,
-        extraCharges: currentSession.extraCharges + extraCharges + adjustment
+        startTime: end,
+        totalPauseDurationSeconds: 0,
+        accumulatedTimeSeconds: currentSession.accumulatedTimeSeconds + (mins * 60),
+        accumulatedCost: currentSession.accumulatedCost + segmentCost,
+        extraCharges: currentSession.extraCharges + extraCharges,
+        switchHistory: [...existingHistory, ledgerEntry],
       }
     })
 

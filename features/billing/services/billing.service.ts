@@ -235,7 +235,8 @@ export async function checkoutCustomer(customerId?: string, sessionId?: string) 
       }
       if (cost < type.minimumCharge) cost = type.minimumCharge
       
-      sessionTotal += cost + (s.extraCharges || 0)
+      const extraHourlyCost = (s.extraHourlyRate || 0) * (mins / 60)
+      sessionTotal += cost + extraHourlyCost + (s.extraCharges || 0) + (s.accumulatedCost || 0)
     }
 
     // 2. Gather unbilled orders

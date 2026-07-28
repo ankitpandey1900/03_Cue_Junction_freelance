@@ -394,22 +394,51 @@ export function InvoiceDetailView({
                     Play Sessions
                   </p>
                   {invoice.sessions.map(session => {
+                    const switchHistory = (session as any).switchHistory as any[] || []
                     const end = session.endTime ? new Date(session.endTime).getTime() : new Date().getTime()
                     const start = new Date(session.startTime).getTime()
-                    let mins = Math.floor((end - start) / 60000)
-                    mins -= Math.floor(session.totalPauseDurationSeconds / 60)
-                    if (mins < 1) mins = 1
-                    const hrs = Math.floor(mins / 60)
-                    const remainingMins = mins % 60
-                    const durationStr = hrs > 0 ? `${hrs}h ${remainingMins}m` : `${remainingMins}m`
+                    let currentMins = Math.floor((end - start) / 60000)
+                    currentMins -= Math.floor(session.totalPauseDurationSeconds / 60)
+                    if (currentMins < 1) currentMins = 1
+                    const currentHrs = Math.floor(currentMins / 60)
+                    const currentRemainingMins = currentMins % 60
+                    const currentDurationStr = currentHrs > 0 ? `${currentHrs}h ${currentRemainingMins}m` : `${currentRemainingMins}m`
 
                     return (
-                      <div key={session.id} className="flex justify-between items-start text-xs gap-4">
-                        <div className="space-y-0.5">
-                          <p className="font-medium text-foreground">{session.table.name}</p>
-                          <p className="text-[10px] text-muted-foreground">
-                            {session.table.tableType.name} ({formatCurrency(session.table.tableType.hourlyRate)}/hr) · Played {durationStr}
-                          </p>
+                      <div key={session.id} className="space-y-1.5">
+                        {/* Previous table segments from switch history */}
+                        {switchHistory.map((entry: any, idx: number) => {
+                          const segHrs = Math.floor(entry.durationMinutes / 60)
+                          const segRemMins = entry.durationMinutes % 60
+                          const segDur = segHrs > 0 ? `${segHrs}h ${segRemMins}m` : `${segRemMins}m`
+                          return (
+                            <div key={idx} className="flex justify-between items-start text-xs gap-4">
+                              <div className="space-y-0.5">
+                                <p className="font-medium text-foreground">{entry.tableName}</p>
+                                <p className="text-[10px] text-muted-foreground">
+                                  {entry.tableTypeName} ({formatCurrency(entry.hourlyRate)}/hr) · Played {segDur}
+                                </p>
+                                <p className="text-[10px] text-muted-foreground/70">
+                                  {formatInTimeZone(new Date(entry.startedAt), "Asia/Kolkata", "hh:mm a")} → Switched at {formatInTimeZone(new Date(entry.switchedAt), "Asia/Kolkata", "hh:mm a")}
+                                </p>
+                              </div>
+                              <span className="font-mono text-muted-foreground whitespace-nowrap">{formatCurrency(entry.cost, 2)}</span>
+                            </div>
+                          )
+                        })}
+                        {/* Current / final table segment */}
+                        <div className="flex justify-between items-start text-xs gap-4">
+                          <div className="space-y-0.5">
+                            <p className="font-medium text-foreground">{session.table.name}</p>
+                            <p className="text-[10px] text-muted-foreground">
+                              {session.table.tableType.name} ({formatCurrency(session.table.tableType.hourlyRate)}/hr) · Played {currentDurationStr}
+                            </p>
+                            {switchHistory.length > 0 && (
+                              <p className="text-[10px] text-muted-foreground/70">
+                                {formatInTimeZone(new Date(session.startTime), "Asia/Kolkata", "hh:mm a")} → {session.endTime ? formatInTimeZone(new Date(session.endTime), "Asia/Kolkata", "hh:mm a") : "Ongoing"}
+                              </p>
+                            )}
+                          </div>
                         </div>
                       </div>
                     )

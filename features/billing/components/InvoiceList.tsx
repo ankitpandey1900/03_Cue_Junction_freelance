@@ -6,13 +6,6 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import {
   Table,
   TableBody,
   TableCell,
@@ -130,9 +123,56 @@ export function InvoiceList({ invoices }: { invoices: InvoiceListItem[] }) {
   const totalPages = Math.max(1, Math.ceil(filteredInvoices.length / ITEMS_PER_PAGE))
   const paginatedInvoices = filteredInvoices.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE)
 
+  const statusCounts = useMemo(() => {
+    // Count statuses from the date-filtered set (not the status-filtered set)
+    const dateFiltered = [...invoices].filter((invoice) => {
+      const invoiceDate = new Date(invoice.createdAt)
+      const matchesStartDate = startDate === "" || invoiceDate >= new Date(startDate)
+      let matchesEndDate = true
+      if (endDate !== "") {
+        const end = new Date(endDate)
+        end.setHours(23, 59, 59, 999)
+        matchesEndDate = invoiceDate <= end
+      }
+      let matchesPresetDate = true
+      if (currentFilter !== "all") {
+        const now = new Date()
+        let startPreset = new Date(0)
+        let endPreset = new Date()
+        endPreset.setHours(23, 59, 59, 999)
+        if (currentFilter === "today") {
+          startPreset = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+        } else if (currentFilter === "yesterday") {
+          startPreset = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1)
+          endPreset = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 23, 59, 59, 999)
+        } else if (currentFilter === "week") {
+          startPreset = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7)
+        } else if (currentFilter === "month") {
+          startPreset = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 30)
+        }
+        matchesPresetDate = invoiceDate >= startPreset && invoiceDate <= endPreset
+      }
+      return matchesStartDate && matchesEndDate && matchesPresetDate
+    })
+    const counts: Record<string, number> = { ALL: dateFiltered.length }
+    for (const inv of dateFiltered) {
+      counts[inv.status] = (counts[inv.status] || 0) + 1
+    }
+    return counts
+  }, [invoices, startDate, endDate, currentFilter])
+
+  const STATUS_PILLS = [
+    { value: "ALL", label: "All", color: "bg-zinc-500/10 text-zinc-400 border-zinc-500/30" },
+    { value: "UNPAID", label: "Unpaid", color: "bg-amber-500/10 text-amber-500 border-amber-500/30" },
+    { value: "PARTIAL", label: "Partial", color: "bg-blue-500/10 text-blue-500 border-blue-500/30" },
+    { value: "PAID", label: "Paid", color: "bg-emerald-500/10 text-emerald-500 border-emerald-500/30" },
+    { value: "CANCELLED", label: "Cancelled", color: "bg-red-500/10 text-red-500 border-red-500/30" },
+    { value: "REFUNDED", label: "Refunded", color: "bg-purple-500/10 text-purple-500 border-purple-500/30" },
+  ]
+
   return (
     <div className="space-y-4 pb-10">
-      {/* Quick Filters */}
+      {/* Date Quick Filters */}
       <div className="flex items-center gap-1.5 flex-wrap">
         <Filter className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
         {FILTERS.map((f) => (
@@ -150,7 +190,33 @@ export function InvoiceList({ invoices }: { invoices: InvoiceListItem[] }) {
         ))}
       </div>
 
-      {/* Manual Filters */}
+      {/* Status Filter Pills */}
+      <div className="flex items-center gap-1.5 flex-wrap">
+        {STATUS_PILLS.map((s) => (
+          <button
+            key={s.value}
+            onClick={() => setStatusFilter(s.value)}
+            className={cn(
+              "px-3 py-1 rounded-full text-xs font-medium border transition-all flex items-center gap-1.5",
+              statusFilter === s.value
+                ? `${s.color} ring-1 ring-current/30 shadow-sm`
+                : "bg-card/50 text-muted-foreground border-border/60 hover:border-border hover:text-foreground"
+            )}
+          >
+            {s.label}
+            {(statusCounts[s.value] || 0) > 0 && (
+              <span className={cn(
+                "text-[10px] font-mono px-1.5 py-0.5 rounded-full min-w-[20px] text-center",
+                statusFilter === s.value ? "bg-background/20" : "bg-muted/50"
+              )}>
+                {statusCounts[s.value] || 0}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* Search & Date Range */}
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
         <div className="relative flex-1 w-full max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -177,19 +243,6 @@ export function InvoiceList({ invoices }: { invoices: InvoiceListItem[] }) {
             className="w-full sm:w-[130px] h-9 text-xs"
             title="End Date"
           />
-          <Select value={statusFilter} onValueChange={(val) => setStatusFilter(val || "ALL")}>
-            <SelectTrigger className="w-full sm:w-[130px] h-9 text-xs bg-background/50 border-border">
-              <SelectValue placeholder="All Statuses" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALL">All Statuses</SelectItem>
-              <SelectItem value="PAID">Paid</SelectItem>
-              <SelectItem value="UNPAID">Unpaid</SelectItem>
-              <SelectItem value="PARTIAL">Partial</SelectItem>
-              <SelectItem value="CANCELLED">Cancelled</SelectItem>
-              <SelectItem value="REFUNDED">Refunded</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
       </div>
 

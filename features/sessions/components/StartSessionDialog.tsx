@@ -48,7 +48,7 @@ export function StartSessionDialog({
   const [loading, setLoading] = useState(false)
   const [customerId, setCustomerId] = useState<string>("guest")
   const [openCustomer, setOpenCustomer] = useState(false)
-  const [extraCharges, setExtraCharges] = useState<number>(0)
+  const [extraHourlyRate, setExtraHourlyRate] = useState<number>(0)
 
   const selectedCustomer = customers.find((c) => c.id === customerId)
 
@@ -58,7 +58,7 @@ export function StartSessionDialog({
       const res = await startSessionAction({
         tableId,
         customerId: customerId === "guest" ? undefined : customerId,
-        extraCharges,
+        extraHourlyRate,
       })
 
       if (res.success) {
@@ -77,7 +77,7 @@ export function StartSessionDialog({
   const handleOpenChange = (nextOpen: boolean) => {
     if (nextOpen) {
       setCustomerId("guest")
-      setExtraCharges(0)
+      setExtraHourlyRate(0)
       setOpenCustomer(false)
     }
     onOpenChange(nextOpen)
@@ -152,11 +152,11 @@ export function StartSessionDialog({
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold">Extra Setup / Controller Charge (₹)</Label>
+            <Label className="text-xs font-semibold">Extra Hourly Rate (₹)</Label>
             <Input
               type="number"
-              value={extraCharges === 0 ? "" : extraCharges}
-              onChange={(e) => setExtraCharges(Math.max(0, e.target.value === "" ? 0 : Number(e.target.value)))}
+              value={extraHourlyRate === 0 ? "" : extraHourlyRate}
+              onChange={(e) => setExtraHourlyRate(Math.max(0, e.target.value === "" ? 0 : Number(e.target.value)))}
               className="h-9 text-sm"
             />
           </div>

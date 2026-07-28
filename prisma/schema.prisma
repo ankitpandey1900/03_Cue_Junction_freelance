@@ -145,9 +145,14 @@ model Session {
   invoiceId                 String?
   type                      String        @default("POSTPAID") // "PREPAID" | "POSTPAID"
   startTime                 DateTime      @default(now())
+  originalStartTime         DateTime      @default(now())
   endTime                   DateTime?
   totalPauseDurationSeconds Int           @default(0)
+  accumulatedCost           Float         @default(0)
+  accumulatedTimeSeconds    Int           @default(0)
   extraCharges              Float         @default(0)
+  extraHourlyRate           Float         @default(0)
+  switchHistory             Json          @default("[]")
   lastPausedAt              DateTime?
   status                    String        @default("ACTIVE") // "ACTIVE" | "PAUSED" | "COMPLETED"
   

@@ -160,18 +160,20 @@ export function ActiveSessionCard({ session, availableTables = [] }: ActiveSessi
     }
   }
 
+  const totalElapsedSeconds = elapsedSeconds + (session.accumulatedTimeSeconds || 0)
+  
   // Formatting: first 60 mins is countdown, after that is count up (overtime)
-  const isCountdown = elapsedSeconds < 3600
+  const isCountdown = totalElapsedSeconds < 3600
   let displayMins = 0
   let displaySecs = 0
   let isOvertime = false
 
   if (isCountdown) {
-    const remainingSeconds = 3600 - elapsedSeconds
+    const remainingSeconds = 3600 - totalElapsedSeconds
     displayMins = Math.floor(remainingSeconds / 60)
     displaySecs = remainingSeconds % 60
   } else {
-    const overtimeSeconds = elapsedSeconds - 3600
+    const overtimeSeconds = totalElapsedSeconds - 3600
     displayMins = Math.floor(overtimeSeconds / 60)
     displaySecs = overtimeSeconds % 60
     isOvertime = true
@@ -181,9 +183,9 @@ export function ActiveSessionCard({ session, availableTables = [] }: ActiveSessi
   const timerLabel = isOvertime ? "OVERTIME (+)" : "MIN. HOUR COUNTDOWN (-)"
   const timerString = `${isOvertime ? "+" : ""}${pad(displayMins)}:${pad(displaySecs)}`
   
-  const totalHours = Math.floor(elapsedSeconds / 3600)
-  const totalMins = Math.floor((elapsedSeconds % 3600) / 60)
-  const totalSecs = elapsedSeconds % 60
+  const totalHours = Math.floor(totalElapsedSeconds / 3600)
+  const totalMins = Math.floor((totalElapsedSeconds % 3600) / 60)
+  const totalSecs = totalElapsedSeconds % 60
   const totalTimeString = `Total: ${totalHours > 0 ? totalHours + "h " : ""}${totalMins}m ${totalSecs}s`
 
   // Live estimated cost (remains based on actual elapsed minutes)
@@ -209,7 +211,13 @@ export function ActiveSessionCard({ session, availableTables = [] }: ActiveSessi
   }
 
   const cafeTotal = session.orders?.reduce((sum, order) => sum + order.total, 0) || 0
-  const grandTotal = estimatedCost + cafeTotal + (session.extraCharges || 0)
+  
+  // Calculate extra hourly cost (applies to total visit time!)
+  const totalVisitMinutes = Math.max(1, Math.floor(totalElapsedSeconds / 60))
+  const extraHourlyCost = (session.extraHourlyRate || 0) * (totalVisitMinutes / 60)
+  
+  // Grand total includes the accumulated cost from past tables
+  const grandTotal = estimatedCost + cafeTotal + extraHourlyCost + (session.extraCharges || 0) + (session.accumulatedCost || 0)
 
   return (
     <>
@@ -257,7 +265,7 @@ export function ActiveSessionCard({ session, availableTables = [] }: ActiveSessi
           <div className="text-right">
             <span className="text-[10px] font-medium text-muted-foreground block">STARTED AT</span>
             <span className="text-xs font-medium text-foreground">
-              {formatInTimeZone(new Date(session.startTime), "Asia/Kolkata", "hh:mm a")}
+              {formatInTimeZone(new Date(session.originalStartTime || session.startTime), "Asia/Kolkata", "hh:mm a")}
             </span>
           </div>
         </div>
@@ -274,9 +282,15 @@ export function ActiveSessionCard({ session, availableTables = [] }: ActiveSessi
               <span className="font-mono text-foreground">₹{cafeTotal.toFixed(0)}</span>
             </div>
           )}
+          {(session.extraHourlyRate || 0) > 0 && (
+            <div className="flex justify-between text-muted-foreground">
+              <span>Extra Time Cost</span>
+              <span className="font-mono text-foreground">₹{extraHourlyCost.toFixed(0)}</span>
+            </div>
+          )}
           {(session.extraCharges || 0) > 0 && (
             <div className="flex justify-between text-muted-foreground">
-              <span>Extra Charges</span>
+              <span>Adjustments</span>
               <span className="font-mono text-foreground">₹{session.extraCharges.toFixed(0)}</span>
             </div>
           )}
@@ -428,7 +442,7 @@ export function ActiveSessionCard({ session, availableTables = [] }: ActiveSessi
             </Select>
           </div>
           <div className="space-y-1.5">
-            <Label className="text-sm font-semibold">Extra Controller / Setup Charge (₹)</Label>
+            <Label className="text-sm font-semibold">Flat Adjustment Charge (₹) (Optional)</Label>
             <Input
               type="number"
               value={switchExtraCharges === 0 ? "" : switchExtraCharges}

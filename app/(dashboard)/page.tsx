@@ -9,13 +9,16 @@ import { Card, CardContent } from "@/components/ui/card"
 import { ShoppingCart, Timer, Layers, Activity, CalendarCheck, Receipt, AlertTriangle } from "lucide-react"
 import prisma from "@/lib/prisma"
 import { formatCurrency } from "@/lib/formatters"
-import { formatInTimeZone } from "date-fns-tz"
+import { formatInTimeZone, fromZonedTime } from "date-fns-tz"
 
 export const dynamic = "force-dynamic"
 
+const SYSTEM_TIMEZONE = "Asia/Kolkata"
+
 export default async function DashboardIndex() {
-  const todayStart = new Date()
-  todayStart.setHours(0, 0, 0, 0)
+  // Calculate IST midnight so "today" is always correct regardless of server timezone
+  const todayStr = formatInTimeZone(new Date(), SYSTEM_TIMEZONE, "yyyy-MM-dd")
+  const todayStart = fromZonedTime(`${todayStr}T00:00:00`, SYSTEM_TIMEZONE)
   const dashboardTime = new Date().getTime()
 
   const [tables, activeSessions, customers, upcomingBookings, upcomingBookingsCount, todayPaymentsAgg, unpaidInvoicesCount, customerCount] = await Promise.all([
@@ -222,7 +225,7 @@ export default async function DashboardIndex() {
           ) : (
             <div className="space-y-2 max-h-[600px] overflow-y-auto pr-1">
               {activeSessions.map((session) => (
-                <ActiveSessionCard key={session.id} session={session} />
+                <ActiveSessionCard key={session.id} session={session} availableTables={tables.filter(t => t.status === "AVAILABLE")} />
               ))}
             </div>
           )}
