@@ -51,7 +51,7 @@ export function BookingStartDialog({
 
   // Filter available tables based on tableTypeId if this booking is for a specific type
   const selectableTables = availableTables?.filter(t => 
-    t.status === "AVAILABLE" && (!tableTypeId || t.tableType.id === tableTypeId)
+    (t.status === "AVAILABLE" || t.id === tableId) && (!tableTypeId || t.tableType.id === tableTypeId)
   ) || []
 
   const handleStart = async () => {
@@ -110,7 +110,9 @@ export function BookingStartDialog({
                 </Label>
                 <Select value={selectedTableId} onValueChange={(val) => setSelectedTableId(val || "")}>
                   <SelectTrigger className="h-8 text-xs bg-background">
-                    <SelectValue placeholder="Select a table" />
+                    <SelectValue placeholder="Select a table">
+                      {selectableTables.find(t => t.id === selectedTableId)?.name}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {selectableTables.length === 0 ? (

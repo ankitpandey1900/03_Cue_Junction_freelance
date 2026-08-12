@@ -88,14 +88,19 @@ export function CafeMenu({ menuItems, activeSessions, initialSessionId }: CafeMe
   }, [cart])
 
   const addToCart = (item: MenuItem) => {
+    const existing = cart.find((i) => i.menuItem.id === item.id)
+    
+    // Stock limit safety check
+    if (existing && existing.quantity >= item.stock) {
+      toast.error(`Only ${item.stock} units of "${item.name}" are available in stock!`)
+      return
+    }
+
+    toast.success(`Added ${item.name} to cart`)
+
     setCart((prev) => {
-      const existing = prev.find((i) => i.menuItem.id === item.id)
-      if (existing) {
-        // Stock limit safety check
-        if (existing.quantity >= item.stock) {
-          toast.error(`Only ${item.stock} units of "${item.name}" are available in stock!`)
-          return prev
-        }
+      const existingItem = prev.find((i) => i.menuItem.id === item.id)
+      if (existingItem) {
         return prev.map((i) =>
           i.menuItem.id === item.id
             ? { ...i, quantity: i.quantity + 1 }
