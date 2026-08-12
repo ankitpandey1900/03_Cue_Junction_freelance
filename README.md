@@ -78,3 +78,16 @@ Each folder houses its own:
 - `components/` - React views and components tied specifically to that feature.
 - `services/` - Direct Prisma queries and transaction hooks executing data mutations.
 
+---
+
+## 4. Documentation Suite
+
+This project comes with a comprehensive suite of technical documentation. Please refer to the `/docs` directory for deep-dives into the architecture:
+
+- **`docs/PROJECT_OVERVIEW.md`**: High-level overview of the unified system, pausable timers, and pricing.
+- **`docs/SYSTEM_DESIGN.md`**: Architectural breakdown of the state machines, table switching, and pricing engine logic.
+- **`docs/PRICING_ENGINE_MATH.md`**: Detailed mathematical formulas used for session billing, overtime packages, and extra charges.
+- **`docs/API_REFERENCE.md`**: Specification of the Next.js Server Actions used for the internal API.
+- **`docs/DATABASE_DESIGN.md` & `docs/ER_DIAGRAM.md`**: Strict relational schemas and structural entity maps.
+- **`docs/FEATURE_DOCUMENTATION/`**: Detailed explainers for individual modules (Settings, Reports, Activity Logs, Customers, PWA).
+

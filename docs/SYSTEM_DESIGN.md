@@ -81,7 +81,24 @@ Start (t0)                  Pause (t1)      Resume (t2)             End (t3)
 
 ---
 
-## 3. Play Pricing Strategy Engine (Prisma Logic Implementation)
+## 3. Table Switching Architecture
+In real-world cafe operations, players often request to move from one table to another (e.g., from a standard Pool table to a VIP Snooker table) midway through their session. The system handles this seamlessly without terminating the session or generating multiple invoices.
+
+### The `switchHistory` Snapshot Pattern
+When a table switch occurs:
+1. The server calculates the exact time spent and the precise cost incurred on the *current* table up to this exact second.
+2. The current accumulated cost is added to the session's `accumulatedCost` field.
+3. The exact time spent is added to the session's `accumulatedTimeSeconds` field.
+4. A JSON snapshot is pushed to the `switchHistory` array column. This creates a historical ledger of exactly which tables were played on, for how long, and at what rate.
+5. The session's `startTime` is reset to `now()`. This ensures the timer running on the new table starts counting purely for the new table's rate.
+6. The old table is freed (`AVAILABLE`), and the new table is locked (`OCCUPIED`).
+
+### Final Billing with Switches
+When the session is ultimately ended, the `endSessionAction` calculates the cost of the *final* table segment, and adds it to the `accumulatedCost` that was snapshotted during the switches. This guarantees perfect billing precision even if a customer switches between tables with vastly different hourly rates.
+
+---
+
+## 4. Play Pricing Strategy Engine (Prisma Logic Implementation)
 Pricing rules are applied by `endSession` inside a database transaction block:
 
 ### Configuration Pricing Logic Flowchart

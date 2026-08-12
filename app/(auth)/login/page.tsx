@@ -14,11 +14,9 @@ export default function LoginPage() {
 
       <div className="relative z-10 w-full max-w-sm">
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-3 h-10 w-10 rounded-lg bg-primary flex items-center justify-center">
-            <span className="text-sm font-bold text-primary-foreground">CJ</span>
-          </div>
-          <h1 className="text-xl font-semibold tracking-tight text-foreground">
-            Cue Junction
+          <img src="/logo.svg" alt="Cue Junction | Darshan Cafe" className="h-10 w-auto rounded-md mx-auto" />
+          <h1 className="text-xl font-semibold tracking-tight text-foreground mt-4">
+            Cue Junction | Darshan Cafe
           </h1>
           <p className="text-xs text-muted-foreground mt-1">Management System</p>
         </div>

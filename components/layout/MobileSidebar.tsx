@@ -247,11 +247,17 @@ export function MobileSidebar({ navItems, userName, userRole }: MobileSidebarPro
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-1.5 px-1">
+            <div className="flex items-center gap-1.5 px-1 mb-3">
               <div className="flex-1">
                 <LogoutButton />
               </div>
               <ThemeToggle />
+            </div>
+            <div className="text-center pt-2 border-t border-border/40">
+              <p className="text-[10px] text-muted-foreground/60 leading-tight">
+                Developed by Ankit Pandey<br/>
+                &copy; {new Date().getFullYear()} All rights reserved.
+              </p>
             </div>
           </div>
         </div>

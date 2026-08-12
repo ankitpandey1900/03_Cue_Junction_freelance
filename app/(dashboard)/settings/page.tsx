@@ -25,6 +25,13 @@ export default async function SettingsPage() {
       </div>
 
       <SettingsForm initialData={settings} staffMembers={staffMembers} />
+
+      <div className="mt-12 text-center pb-8">
+        <p className="text-sm text-muted-foreground/60">
+          Developed by Ankit Pandey<br/>
+          &copy; {new Date().getFullYear()} All rights reserved.
+        </p>
+      </div>
     </div>
   )
 }

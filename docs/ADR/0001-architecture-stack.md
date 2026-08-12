@@ -18,6 +18,7 @@ I went with the Next.js App Router. Why?
 - **Server Actions:** I eliminated the need to write and maintain a separate Express REST API. The mental overhead of typing a payload in the backend and manually casting it in the frontend is gone. 
 - **Type Safety:** Prisma tied to Postgres gives me end-to-end type safety. If I change a column in the database, the TypeScript compiler instantly flags every component that breaks.
 - **Relational Data:** I immediately discarded MongoDB/Firebase. I are dealing with Invoices, Orders, and Sessions. Trying to handle complex, ACID-compliant financial joins in a NoSQL document store is a nightmare waiting to happen. Postgres was the only sensible choice.
+- **Better Auth:** Replaced standard NextAuth/Auth.js with Better Auth to provide a cleaner, more edge-compatible authentication layer that integrates natively with Prisma and Server Actions without the headache of middleware conflicts.
 
 ## Consequences
 - **Positive:** Developer velocity is extremely high. The Feature-Sliced Design inside the `features/` directory keeps the codebase pristine. 

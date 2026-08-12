@@ -1,6 +1,7 @@
 import { getDashboardStats, parseReportRange } from "@/features/reports/services/report.service"
 import { DashboardAnalytics } from "@/features/reports/components/DashboardAnalytics"
 import { ReportFilters } from "@/features/reports/components/ReportFilters"
+import { ExportButton } from "@/features/reports/components/ExportButton"
 import { requireAdminPage } from "@/lib/action-auth"
 
 export const dynamic = "force-dynamic"
@@ -28,10 +29,13 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
           </p>
         </div>
 
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <ReportFilters />
+        <div className="flex flex-col gap-3 lg:items-end">
+          <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+            <ExportButton stats={stats} />
+            <ReportFilters />
+          </div>
           
-          <form className="flex items-center gap-2 flex-wrap" action="/reports">
+          <form className="flex flex-wrap items-center gap-2 lg:justify-end" action="/reports">
             <input
               type="date"
               name="from"

@@ -126,10 +126,15 @@ Represents an active, pausable temporal session on a physical table.
 - `bookingId` (String, Unique, Optional, Foreign Key -> `Booking.id`).
 - `invoiceId` (String, Optional, Foreign Key -> `Invoice.id`): Linked to the invoice once checked out.
 - `type` (String, Default: `"POSTPAID"`): Billing trigger mode. Options: `"PREPAID" | "POSTPAID"`.
-- `startTime` (DateTime, Default: `now()`): When the session was started.
+- `startTime` (DateTime, Default: `now()`): When the session was started on the current table.
+- `originalStartTime` (DateTime, Default: `now()`): The absolute start time of the session (unchanged by table switches).
 - `endTime` (DateTime, Optional): When the session ended.
-- `totalPauseDurationSeconds` (Int, Default: `0`): Total accumulated pause duration, calculated and stored dynamically.
+- `totalPauseDurationSeconds` (Int, Default: `0`): Total accumulated pause duration.
+- `accumulatedCost` (Float, Default: `0`): Historical cost incurred on previous tables before switching.
+- `accumulatedTimeSeconds` (Int, Default: `0`): Historical time spent on previous tables before switching.
 - `extraCharges` (Float, Default: `0`): Additional flat charges levied on the session.
+- `extraHourlyRate` (Float, Default: `0`): Additional hourly rate applied (e.g., for extra players).
+- `switchHistory` (Json, Default: `[]`): Immutable ledger recording exactly which tables were played, for how long, and at what rate before a switch.
 - `lastPausedAt` (DateTime, Optional): The exact timestamp when the session was last paused. Used to compute pause delta on resume.
 - `status` (String, Default: `"ACTIVE"`): Current temporal state. Options: `"ACTIVE" | "PAUSED" | "COMPLETED"`.
 

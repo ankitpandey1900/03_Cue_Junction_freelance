@@ -45,10 +45,8 @@ export default async function DashboardLayout({
       <aside className="hidden lg:flex lg:w-60 lg:flex-col lg:fixed lg:inset-y-0 border-r border-border bg-sidebar z-20">
         {/* Brand */}
         <div className="flex h-14 items-center gap-2.5 px-5 border-b border-border">
-          <div className="h-7 w-7 rounded-md bg-primary flex items-center justify-center">
-            <span className="text-xs font-bold text-primary-foreground">CJ</span>
-          </div>
-          <span className="text-sm font-semibold text-foreground tracking-tight">Cue Junction</span>
+          <img src="/logo.svg" alt="Cue Junction | Darshan Cafe" className="h-8 w-auto rounded-sm" />
+          <span className="text-[13px] font-semibold text-foreground tracking-tight whitespace-nowrap">Cue Junction | Darshan Cafe</span>
         </div>
 
         {/* Navigation */}
@@ -69,7 +67,7 @@ export default async function DashboardLayout({
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 mb-3">
             <LogoutButton />
             <ThemeToggle />
           </div>
@@ -89,10 +87,8 @@ export default async function DashboardLayout({
         {/* Mobile header */}
         <header className="sticky top-0 z-40 flex h-14 items-center justify-between gap-4 border-b border-border bg-background/95 backdrop-blur-sm px-4 lg:hidden">
           <div className="flex items-center gap-2.5">
-            <div className="h-6 w-6 rounded bg-primary flex items-center justify-center">
-              <span className="text-[10px] font-bold text-primary-foreground">CJ</span>
-            </div>
-            <span className="text-sm font-semibold text-foreground">Cue Junction</span>
+            <img src="/logo.svg" alt="Cue Junction | Darshan Cafe" className="h-7 w-auto rounded-sm" />
+            <span className="text-[13px] font-semibold text-foreground tracking-tight whitespace-nowrap">Cue Junction | Darshan Cafe</span>
           </div>
           <ThemeToggle />
         </header>

@@ -27,6 +27,8 @@ erDiagram
     Invoice ||--o{ CustomerOrder : "bills for"
 
     Invoice ||--o{ Payment : "settled by"
+    
+    CafeSettings : "global configuration"
 ```
 
 ---
@@ -85,6 +87,9 @@ A security ledger auditing internal staff actions.
   │  id (PK)                   String (CUID)               │
   │  hourlyRate                Float                       │
   │  minimumCharge             Float                       │
+  │  fixedRate                 Float (Opt)                 │
+  │  fixedDuration             Int (Opt)                   │
+  │  overtimeHourlyRate        Float (Opt)                 │
   └────────────────────────────────────────────────────────┘
         │
         │ 1
@@ -99,15 +104,20 @@ A security ledger auditing internal staff actions.
         │                        │
         │ 1                      │ 1
         ▼ 0..*                   ▼ 0..*
-  ┌──────────────────────┐ ┌──────────────────────────────┐
-  │       Session        │ │           Booking            │
-  ├──────────────────────┤ ├──────────────────────────────┤
-  │  id (PK)             │ │  id (PK)                     │
-  │  tableId (FK) String │ │  tableId (FK)               │
-  │  invoiceId (FK)      │ │  status                      │
-  │  totalPauseDuration  │ │                              │
-  │  status       String │ │                              │
-  └──────────────────────┘ └──────────────────────────────┘
+  ┌─────────────────────────────────┐ ┌──────────────────────────────┐
+  │             Session             │ │           Booking            │
+  ├─────────────────────────────────┤ ├──────────────────────────────┤
+  │  id (PK)                 String │ │  id (PK)                     │
+  │  tableId (FK)            String │ │  tableId (FK)                │
+  │  invoiceId (FK)          String │ │  status                      │
+  │  type                    String │ │                              │
+  │  accumulatedCost         Float  │ │                              │
+  │  accumulatedTimeSeconds  Int    │ │                              │
+  │  extraCharges            Float  │ │                              │
+  │  switchHistory           Json   │ │                              │
+  │  totalPauseDuration      Int    │ │                              │
+  │  status                  String │ │                              │
+  └─────────────────────────────────┘ └──────────────────────────────┘
 ```
 
 #### Table: `TableType`
@@ -233,6 +243,26 @@ Log entries capturing transactions.
 *   **Indexes:** `[paidAt]`, `[invoiceId]`
 *   **Relations:**
     *   `invoice`: `Payment 0..* ── 1 Invoice` (Clears balance via `invoiceId`).
+
+---
+
+### 2.5. Settings Domain
+
+```
+  ┌────────────────────────────────────────────────────────┐
+  │                      CafeSettings                      │
+  ├────────────────────────────────────────────────────────┤
+  │  id (PK)                   String (CUID)               │
+  │  cafeName                  String                      │
+  │  defaultHourlyRate         Float                       │
+  │  receiptFooterText         String                      │
+  │  taxRate                   Float                       │
+  │  acceptUpi/Card/Cash       Boolean                     │
+  └────────────────────────────────────────────────────────┘
+```
+
+#### Table: `CafeSettings`
+A singleton table (only one row exists) storing global configuration for the system, including business details, receipt footer text, tax rates, and payment methods enabled.
 
 ---
 

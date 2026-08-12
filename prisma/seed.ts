@@ -262,7 +262,7 @@ async function main() {
           basePrice: item.price,
           displayOrder: itemIndex++,
           isAvailable: true,
-          stock: 100 // Set standard stock pool for seed items
+          stock: 0 // Set standard stock pool for seed items
         }
       })
     }

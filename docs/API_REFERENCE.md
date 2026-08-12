@@ -112,7 +112,27 @@ Unfreezes the billing timer and updates the accumulated pause duration offset.
 
 ---
 
-### 3.4. `endSessionAction`
+### 3.4. `switchTableAction`
+Transfers an active session from one physical table to another, snapshotting the accumulated cost and time on the old table.
+
+- **Parameters:** `sessionId: string`, `newTableId: string`.
+- **Step-by-Step Logic Flow:**
+  1. Validates operator session.
+  2. Queries the current session and the new target table.
+  3. Ensures the new table is `AVAILABLE`.
+  4. Computes the cost accumulated on the current table up to this exact second.
+  5. Updates the database:
+     - Sets the old table's status to `AVAILABLE`.
+     - Sets the new table's status to `OCCUPIED`.
+     - Appends a snapshot entry to the session's `switchHistory` JSON array (recording the old table's rate, duration spent on it, and cost incurred).
+     - Updates the session's `tableId` to the `newTableId`.
+     - Updates `accumulatedTimeSeconds` and `accumulatedCost` with the computed values.
+     - Resets the session's timer baseline so it counts from 0 on the new table.
+  6. Revalidates paths `/sessions` and `/tables`.
+
+---
+
+### 3.5. `endSessionAction`
 Calculates final charges, completes the session, frees the table, and generates the invoice.
 
 - **Parameters:** `sessionId: string`.
